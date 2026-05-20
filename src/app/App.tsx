@@ -8,6 +8,14 @@ import { IncidentForm } from '../components/incidents/IncidentForm';
 import { EscalateForm } from '../components/incidents/EscalateForm';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity } from '../models';
+import { PreparedScenarioInject } from '../data/incidentTemplates';
+
+const severityRank: Record<IncidentSeverity, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
+};
 
 export const App: React.FC = () => {
   const sim = useSimulation();
@@ -55,6 +63,34 @@ export const App: React.FC = () => {
       return;
     }
     if (confirmReassignment(officerId)) sim.assignOfficerToBus(officerId, busId);
+  };
+  const activatePreparedInject = (inject: PreparedScenarioInject, buildingId: string) => {
+    sim.createIncident(
+      buildingId,
+      inject.title,
+      inject.description,
+      inject.severity,
+      inject.requiredOfficers,
+      inject.requiresEscortPermission,
+      inject.requiresTaserPermission,
+      inject.externalEscortRequired,
+      `Õppejõud käivitas valmis sündmuse: ${inject.title}`
+    );
+  };
+  const applyPreparedEscalation = (inject: PreparedScenarioInject, incidentId: string) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    const severity = severityRank[inject.severity] > severityRank[incident.severity] ? inject.severity : incident.severity;
+    sim.escalateIncident(
+      incidentId,
+      inject.escalationText ?? inject.description,
+      severity,
+      Math.max(incident.requiredOfficers, inject.requiredOfficers),
+      incident.requiresEscortPermission || inject.requiresEscortPermission,
+      incident.requiresTaserPermission || inject.requiresTaserPermission,
+      incident.externalEscortRequired || inject.externalEscortRequired,
+      `Õppejõud lisas valmis eskalatsiooni: ${inject.escalationLogText ?? inject.escalationText ?? inject.title}.`
+    );
   };
 
   return (
@@ -120,6 +156,8 @@ export const App: React.FC = () => {
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
           onOfficerDropToIncident={assignDroppedOfficerToIncident}
+          onActivatePreparedInject={activatePreparedInject}
+          onApplyPreparedEscalation={applyPreparedEscalation}
         />
       </div>
 

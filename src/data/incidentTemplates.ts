@@ -85,6 +85,102 @@ export interface EscalationTemplate {
   severity?: IncidentSeverity;
 }
 
+export type PreparedInjectStatus = 'draft' | 'ready' | 'activated';
+
+export interface PreparedScenarioInject {
+  id: string;
+  title: string;
+  targetBuildingName: string;
+  description: string;
+  requiredOfficers: number;
+  requiresEscortPermission: boolean;
+  requiresTaserPermission: boolean;
+  externalEscortRequired: boolean;
+  severity: IncidentSeverity;
+  escalationText?: string;
+  escalationLogText?: string;
+  status: PreparedInjectStatus;
+  canEscalate?: boolean;
+}
+
+export const PREPARED_SCENARIO_INJECTS: PreparedScenarioInject[] = [
+  {
+    id: 'prepared-unit-1-fight',
+    title: '1. üksus — kaklus',
+    targetBuildingName: '1. üksus',
+    description: 'Üksuses on tekkinud kaklus. Vajalik lisajõud ja olukorra kontrolli alla saamine.',
+    requiredOfficers: 3,
+    requiresEscortPermission: false,
+    requiresTaserPermission: false,
+    externalEscortRequired: false,
+    severity: 'high',
+    status: 'ready',
+  },
+  {
+    id: 'prepared-reception-unwell',
+    title: 'Arestimaja ja vastuvõtt — kinnipeetaval halb olla',
+    targetBuildingName: 'Arestimaja ja vastuvõtt',
+    description: 'Kinnipeetav tunneb ennast halvasti. Vajalik esmane reageerimine.',
+    requiredOfficers: 1,
+    requiresEscortPermission: false,
+    requiresTaserPermission: false,
+    externalEscortRequired: false,
+    severity: 'medium',
+    status: 'ready',
+  },
+  {
+    id: 'prepared-urgent-external-escort',
+    title: 'Olukorra muutus — vajalik erakorraline väljaviimine',
+    targetBuildingName: 'Arestimaja ja vastuvõtt',
+    description: 'Olukord eskaleerus. Vajalik erakorraline vanglaväline väljaviimine.',
+    requiredOfficers: 2,
+    requiresEscortPermission: true,
+    requiresTaserPermission: false,
+    externalEscortRequired: true,
+    severity: 'high',
+    escalationText: 'Olukord eskaleerus. Vajalik erakorraline vanglaväline väljaviimine.',
+    escalationLogText: 'vajalik erakorraline väljaviimine',
+    status: 'ready',
+    canEscalate: true,
+  },
+  {
+    id: 'prepared-unit-4-fire',
+    title: '4. üksus — põlengu või suitsu kahtlus',
+    targetBuildingName: '4. üksus',
+    description: 'Hoonest on tulnud teade suitsu või põlengu kahtlusest.',
+    requiredOfficers: 2,
+    requiresEscortPermission: false,
+    requiresTaserPermission: false,
+    externalEscortRequired: false,
+    severity: 'critical',
+    status: 'ready',
+  },
+  {
+    id: 'prepared-gatehouse-security',
+    title: 'Pääsla / kokkusaamised / välisvalve — turvaolukord',
+    targetBuildingName: 'Pääsla / kokkusaamised / välisvalve',
+    description: 'Pääsla, kokkusaamiste või välisvalve piirkonnas on tekkinud olukord, mis vajab lisaressurssi.',
+    requiredOfficers: 2,
+    requiresEscortPermission: false,
+    requiresTaserPermission: false,
+    externalEscortRequired: false,
+    severity: 'medium',
+    status: 'ready',
+  },
+  {
+    id: 'prepared-school-refusal',
+    title: 'Kool — korraldusele mitteallumine',
+    targetBuildingName: 'Kool',
+    description: 'Õppetöö või liikumise ajal ei alluta korraldustele. Vajalik olukorra rahustamine ja kontroll.',
+    requiredOfficers: 2,
+    requiresEscortPermission: false,
+    requiresTaserPermission: true,
+    externalEscortRequired: false,
+    severity: 'high',
+    status: 'ready',
+  },
+];
+
 export const ESCALATION_TEMPLATES: EscalationTemplate[] = [
   {
     id: 'officer-injured',

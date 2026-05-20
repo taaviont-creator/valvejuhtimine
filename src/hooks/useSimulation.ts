@@ -525,7 +525,8 @@ export function useSimulation() {
       requiredOfficers: number,
       requiresEscortPermission: boolean,
       requiresTaserPermission: boolean,
-      externalEscortRequired: boolean
+      externalEscortRequired: boolean,
+      logText?: string
     ) => {
       commit((current) => {
         if (!current.simulation) return current;
@@ -549,7 +550,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents: [...current.incidents, incident] },
           'teacher',
-          `Sündmus lisatud: "${title}" asukohas ${building.name}`
+          logText ?? `Sündmus lisatud: "${title}" asukohas ${building.name}`
         );
       });
     },
@@ -564,7 +565,8 @@ export function useSimulation() {
       requiredOfficers: number,
       requiresEscortPermission: boolean,
       requiresTaserPermission: boolean,
-      externalEscortRequired: boolean
+      externalEscortRequired: boolean,
+      logText?: string
     ) => {
       commit((current) => {
         if (!current.simulation) return current;
@@ -585,7 +587,7 @@ export function useSimulation() {
               }
             : item
         );
-        return appendLog({ ...current, incidents }, 'teacher', `Sündmust eskaleeriti: "${incident.title}"`);
+        return appendLog({ ...current, incidents }, 'teacher', logText ?? `Sündmust eskaleeriti: "${incident.title}"`);
       });
     },
     [commit]

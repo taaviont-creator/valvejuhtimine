@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Building, DecisionLogEntry, Incident, Officer, Warning } from '../../models';
+import { PreparedScenarioInject } from '../../data/incidentTemplates';
 import { IncidentCard } from '../incidents/IncidentCard';
+import { PreparedInjectPanel } from '../incidents/PreparedInjectPanel';
 import { WarningList } from '../warnings/WarningList';
 import { DecisionLog } from '../log/DecisionLog';
 
@@ -22,6 +24,8 @@ interface Props {
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
   onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
+  onActivatePreparedInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onApplyPreparedEscalation?: (inject: PreparedScenarioInject, incidentId: string) => void;
 }
 
 export const RightSidebar: React.FC<Props> = ({
@@ -35,6 +39,8 @@ export const RightSidebar: React.FC<Props> = ({
   onEscalate,
   onCloseIncident,
   onOfficerDropToIncident,
+  onActivatePreparedInject,
+  onApplyPreparedEscalation,
 }) => {
   const [tab, setTab] = useState<Tab>('incidents');
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
@@ -77,9 +83,17 @@ export const RightSidebar: React.FC<Props> = ({
         {tab === 'incidents' && (
           <>
             {isFacilitator && (
-              <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
-                Lisa sündmus
-              </button>
+              <>
+                <PreparedInjectPanel
+                  buildings={buildings}
+                  incidents={incidents}
+                  onActivateInject={(inject, buildingId) => onActivatePreparedInject?.(inject, buildingId)}
+                  onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
+                />
+                <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
+                  Lisa sündmus
+                </button>
+              </>
             )}
             {incidents.length === 0 && <div style={emptyStyle}>Sündmusi pole veel</div>}
             {activeIncidents.map((incident) => (

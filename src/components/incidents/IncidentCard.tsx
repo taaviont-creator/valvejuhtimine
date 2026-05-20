@@ -49,6 +49,7 @@ export const IncidentCard: React.FC<Props> = ({
   const taserCount = assigned.filter((officer) => officer.hasTaserPermission).length;
   const latestUpdate = incident.updates[incident.updates.length - 1];
   const unmetRequirement = assigned.length < incident.requiredOfficers;
+  const isNewIncident = incident.status !== 'closed' && Date.now() - new Date(incident.createdAt).getTime() < 5 * 60 * 1000;
   const dropOfficer = (event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -62,6 +63,7 @@ export const IncidentCard: React.FC<Props> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={titleTextStyle(incident.status === 'closed')}>Sündmus: {incident.title}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
+            {isNewIncident && <span style={newBadgeStyle}>Uus sündmus</span>}
             <span style={{ ...statusStyle, color: incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--text-muted)' : color }}>
               {statusLabels[incident.status]}
             </span>
@@ -179,6 +181,19 @@ const statusStyle: React.CSSProperties = {
   letterSpacing: 0.5,
   whiteSpace: 'nowrap',
   textTransform: 'uppercase',
+};
+
+const newBadgeStyle: React.CSSProperties = {
+  padding: '1px 5px',
+  background: 'rgba(0,255,136,0.12)',
+  border: '1px solid var(--green-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--green)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  letterSpacing: 0.5,
+  textTransform: 'uppercase',
+  whiteSpace: 'nowrap',
 };
 
 const severityStyle: React.CSSProperties = {
