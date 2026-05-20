@@ -5,6 +5,7 @@ import { Building, Incident, IncidentSeverity } from '../../models';
 interface Props {
   buildings: Building[];
   incidents: Incident[];
+  activatedInjectIds?: string[];
   onActivateInject: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyEscalation: (inject: PreparedScenarioInject, incidentId: string) => void;
 }
@@ -22,7 +23,7 @@ const statusLabels: Record<PreparedInjectStatus, string> = {
   activated: 'Käivitatud',
 };
 
-export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, onActivateInject, onApplyEscalation }) => {
+export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, activatedInjectIds = [], onActivateInject, onApplyEscalation }) => {
   const selectableBuildings = buildings.filter((building) => !building.isResourcePool);
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const initialDrafts = useMemo(
@@ -83,7 +84,8 @@ export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, onA
       </div>
 
       <div style={cardListStyle}>
-        {Object.values(drafts).map((inject) => {
+        {Object.values(drafts).map((draft) => {
+          const inject = activatedInjectIds.includes(draft.id) ? { ...draft, status: 'activated' as const } : draft;
           const editing = editingId === inject.id;
           return (
             <article key={inject.id} style={cardStyle(inject.status)}>

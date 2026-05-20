@@ -7,6 +7,7 @@ import {
   DecisionLogEntry,
   Incident,
   IncidentSeverity,
+  IncidentStatus,
   IncidentUpdate,
   LogActor,
   Officer,
@@ -566,7 +567,8 @@ export function useSimulation() {
       requiresEscortPermission: boolean,
       requiresTaserPermission: boolean,
       externalEscortRequired: boolean,
-      logText?: string
+      logText?: string,
+      nextStatus: IncidentStatus = 'escalated'
     ) => {
       commit((current) => {
         if (!current.simulation) return current;
@@ -577,7 +579,7 @@ export function useSimulation() {
           item.id === incidentId
             ? {
                 ...item,
-                status: 'escalated' as const,
+                status: nextStatus,
                 severity,
                 requiredOfficers,
                 requiresEscortPermission,
@@ -594,7 +596,7 @@ export function useSimulation() {
   );
 
   const markOfficerInjured = useCallback(
-    (incidentId: string, officerId: string) => {
+    (incidentId: string, officerId: string, logText?: string) => {
       commit((current) => {
         if (!current.simulation) return current;
         const incident = current.incidents.find((item) => item.id === incidentId && item.status !== 'closed');
@@ -628,7 +630,8 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents, officers },
           'teacher',
-          `Õppejõud märkis ametniku ${officer.name} vigastatuks sündmusel: ${incident.title}. Ametnik eemaldati sündmuselt ja on mängust väljas.`
+          logText ??
+            `Õppejõud märkis ametniku ${officer.name} vigastatuks sündmusel: ${incident.title}. Ametnik eemaldati sündmuselt ja on mängust väljas.`
         );
       });
     },
@@ -636,7 +639,7 @@ export function useSimulation() {
   );
 
   const closeIncident = useCallback(
-    (incidentId: string) => {
+    (incidentId: string, logText?: string) => {
       commit((current) => {
         if (!current.simulation) return current;
         const incident = current.incidents.find((item) => item.id === incidentId);
@@ -664,9 +667,10 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents, officers },
           'teacher',
-          releasedWithoutHome
-            ? `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse või valves olevate ametnike hulka.`
-            : `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse.`
+          logText ??
+            (releasedWithoutHome
+              ? `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse või valves olevate ametnike hulka.`
+              : `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse.`)
         );
       });
     },

@@ -3,6 +3,7 @@ import { Building, DecisionLogEntry, Incident, Officer, Warning } from '../../mo
 import { PreparedScenarioInject } from '../../data/incidentTemplates';
 import { IncidentCard } from '../incidents/IncidentCard';
 import { PreparedInjectPanel } from '../incidents/PreparedInjectPanel';
+import { OverviewEscalationAction, ScenarioOverviewPanel } from '../incidents/ScenarioOverviewPanel';
 import { WarningList } from '../warnings/WarningList';
 import { DecisionLog } from '../log/DecisionLog';
 
@@ -24,8 +25,13 @@ interface Props {
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
   onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
+  activatedPreparedInjectIds: string[];
   onActivatePreparedInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onActivateOverviewInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyPreparedEscalation?: (inject: PreparedScenarioInject, incidentId: string) => void;
+  onQuickOverviewEscalation?: (incidentId: string, action: OverviewEscalationAction) => void;
+  onOverviewOfficerInjured?: (incidentId: string, officerId: string) => void;
+  onOverviewCloseIncident?: (incidentId: string) => void;
 }
 
 export const RightSidebar: React.FC<Props> = ({
@@ -39,8 +45,13 @@ export const RightSidebar: React.FC<Props> = ({
   onEscalate,
   onCloseIncident,
   onOfficerDropToIncident,
+  activatedPreparedInjectIds,
   onActivatePreparedInject,
+  onActivateOverviewInject,
   onApplyPreparedEscalation,
+  onQuickOverviewEscalation,
+  onOverviewOfficerInjured,
+  onOverviewCloseIncident,
 }) => {
   const [tab, setTab] = useState<Tab>('incidents');
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
@@ -84,9 +95,23 @@ export const RightSidebar: React.FC<Props> = ({
           <>
             {isFacilitator && (
               <>
+                <ScenarioOverviewPanel
+                  buildings={buildings}
+                  incidents={incidents}
+                  officers={officers}
+                  warnings={warnings}
+                  decisionLog={decisionLog}
+                  activatedInjectIds={activatedPreparedInjectIds}
+                  onActivateInject={(inject, buildingId) => onActivateOverviewInject?.(inject, buildingId)}
+                  onOpenEscalation={onEscalate}
+                  onQuickEscalation={(incidentId, action) => onQuickOverviewEscalation?.(incidentId, action)}
+                  onMarkOfficerInjured={(incidentId, officerId) => onOverviewOfficerInjured?.(incidentId, officerId)}
+                  onCloseIncident={(incidentId) => onOverviewCloseIncident?.(incidentId)}
+                />
                 <PreparedInjectPanel
                   buildings={buildings}
                   incidents={incidents}
+                  activatedInjectIds={activatedPreparedInjectIds}
                   onActivateInject={(inject, buildingId) => onActivatePreparedInject?.(inject, buildingId)}
                   onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
                 />

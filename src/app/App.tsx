@@ -6,6 +6,7 @@ import { RightSidebar } from '../components/layout/RightSidebar';
 import { FacilityMap } from '../components/map/FacilityMap';
 import { IncidentForm } from '../components/incidents/IncidentForm';
 import { EscalateForm } from '../components/incidents/EscalateForm';
+import { OverviewEscalationAction } from '../components/incidents/ScenarioOverviewPanel';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [incidentFormBuildingId, setIncidentFormBuildingId] = useState<string | null>(null);
   const [escalateIncidentId, setEscalateIncidentId] = useState<string | null>(null);
+  const [activatedPreparedInjectIds, setActivatedPreparedInjectIds] = useState<string[]>([]);
 
   if (!state.role || !state.simulation) {
     return (
@@ -64,7 +66,10 @@ export const App: React.FC = () => {
     }
     if (confirmReassignment(officerId)) sim.assignOfficerToBus(officerId, busId);
   };
-  const activatePreparedInject = (inject: PreparedScenarioInject, buildingId: string) => {
+  const markPreparedInjectActivated = (injectId: string) => {
+    setActivatedPreparedInjectIds((current) => (current.includes(injectId) ? current : [...current, injectId]));
+  };
+  const activatePreparedInject = (inject: PreparedScenarioInject, buildingId: string, logText?: string) => {
     sim.createIncident(
       buildingId,
       inject.title,
@@ -74,8 +79,9 @@ export const App: React.FC = () => {
       inject.requiresEscortPermission,
       inject.requiresTaserPermission,
       inject.externalEscortRequired,
-      `Õppejõud käivitas valmis sündmuse: ${inject.title}`
+      logText ?? `Õppejõud käivitas valmis sündmuse: ${inject.title}`
     );
+    markPreparedInjectActivated(inject.id);
   };
   const applyPreparedEscalation = (inject: PreparedScenarioInject, incidentId: string) => {
     const incident = state.incidents.find((item) => item.id === incidentId);
@@ -91,6 +97,83 @@ export const App: React.FC = () => {
       incident.externalEscortRequired || inject.externalEscortRequired,
       `Õppejõud lisas valmis eskalatsiooni: ${inject.escalationLogText ?? inject.escalationText ?? inject.title}.`
     );
+    markPreparedInjectActivated(inject.id);
+  };
+  const activatePreparedInjectFromOverview = (inject: PreparedScenarioInject, buildingId: string) => {
+    activatePreparedInject(inject, buildingId, `Õppejõud käivitas sündmuse ülevaatest: ${inject.title}`);
+  };
+  const strongerSeverity = (current: IncidentSeverity, next: IncidentSeverity) =>
+    severityRank[next] > severityRank[current] ? next : current;
+  const quickOverviewEscalation = (incidentId: string, action: OverviewEscalationAction) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    const baseLog = `Õppejõud lisas eskalatsiooni ülevaatest: ${incident.title}`;
+    if (action === 'more_resources') {
+      sim.escalateIncident(
+        incidentId,
+        'Vaja lisaressurssi.',
+        strongerSeverity(incident.severity, 'high'),
+        incident.requiredOfficers + 1,
+        incident.requiresEscortPermission,
+        incident.requiresTaserPermission,
+        incident.externalEscortRequired,
+        baseLog
+      );
+      return;
+    }
+    if (action === 'needs_taser') {
+      sim.escalateIncident(
+        incidentId,
+        'Vajalik EŠR õigusega ametnik.',
+        strongerSeverity(incident.severity, 'high'),
+        incident.requiredOfficers,
+        incident.requiresEscortPermission,
+        true,
+        incident.externalEscortRequired,
+        baseLog
+      );
+      return;
+    }
+    if (action === 'needs_escort') {
+      sim.escalateIncident(
+        incidentId,
+        'Vajalik 2 saateõigusega ametnikku.',
+        strongerSeverity(incident.severity, 'high'),
+        Math.max(incident.requiredOfficers, 2),
+        true,
+        incident.requiresTaserPermission,
+        true,
+        baseLog
+      );
+      return;
+    }
+    sim.escalateIncident(
+      incidentId,
+      'Olukord kontrolli all.',
+      'low',
+      incident.requiredOfficers,
+      incident.requiresEscortPermission,
+      incident.requiresTaserPermission,
+      incident.externalEscortRequired,
+      baseLog,
+      'under_control'
+    );
+  };
+  const markOfficerInjuredFromOverview = (incidentId: string, officerId: string) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    sim.markOfficerInjured(
+      incidentId,
+      officerId,
+      `Õppejõud lisas eskalatsiooni ülevaatest: ${incident?.title ?? 'sündmus'}. Ametnik märgiti vigastatuks.`
+    );
+  };
+  const closeIncidentFromOverview = (incidentId: string) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    const confirmed = window.confirm(
+      `Sündmuse lõpetamisel vabastatakse sellele määratud ametnikud.\n\nVaikimisi: saada ametnikud tagasi määratud üksusesse.\n\nLõpeta sündmus "${incident.title}"?`
+    );
+    if (confirmed) sim.closeIncident(incidentId, `Õppejõud lõpetas sündmuse ülevaatest: ${incident.title}`);
   };
 
   return (
@@ -156,8 +239,13 @@ export const App: React.FC = () => {
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
           onOfficerDropToIncident={assignDroppedOfficerToIncident}
+          activatedPreparedInjectIds={activatedPreparedInjectIds}
           onActivatePreparedInject={activatePreparedInject}
+          onActivateOverviewInject={activatePreparedInjectFromOverview}
           onApplyPreparedEscalation={applyPreparedEscalation}
+          onQuickOverviewEscalation={quickOverviewEscalation}
+          onOverviewOfficerInjured={markOfficerInjuredFromOverview}
+          onOverviewCloseIncident={closeIncidentFromOverview}
         />
       </div>
 
