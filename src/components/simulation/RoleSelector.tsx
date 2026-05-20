@@ -72,7 +72,7 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
               <input
                 value={joinCode}
                 onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                placeholder="ABC123"
+                placeholder="VJ-4821"
                 style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: 3 }}
               />
             </Field>
@@ -92,9 +92,9 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
             <button style={primaryButtonStyle} disabled={!joinCode.trim() || joining} onClick={join}>
               {joining ? 'Joining...' : 'Join simulation'}
             </button>
-            {(syncMessage || syncStatus === 'local') && (
+            {(syncMessage || syncStatus === 'local' || syncStatus === 'supabase') && (
               <div style={noteStyle}>
-                {syncMessage ?? 'No Supabase env vars found. Local browser-tab sync is active.'}
+                {syncMessage ?? (syncStatus === 'supabase' ? 'Supabase sync enabled' : 'Local demo mode')}
               </div>
             )}
           </section>

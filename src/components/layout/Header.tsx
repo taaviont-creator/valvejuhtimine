@@ -23,6 +23,14 @@ export const Header: React.FC<Props> = ({
   onReset,
 }) => {
   const joinUrl = `${window.location.origin}${window.location.pathname}?join=${simulation.joinCode}&role=student`;
+  const syncLabel =
+    syncStatus === 'supabase'
+      ? 'Supabase sync enabled'
+      : syncStatus === 'local'
+      ? 'Local demo mode'
+      : syncStatus === 'loading'
+      ? 'Syncing'
+      : 'Sync error';
 
   return (
     <div style={headerStyle}>
@@ -31,7 +39,7 @@ export const Header: React.FC<Props> = ({
 
       <div>
         <div style={nameStyle}>{simulation.name}</div>
-        <div style={metaStyle}>Code {simulation.joinCode} | {simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
+        <div style={metaStyle}>Join code {simulation.joinCode} | {simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
       </div>
 
       <div style={roleStyle(role)}>{role === 'facilitator' ? 'Teacher' : 'Student'}</div>
@@ -53,7 +61,7 @@ export const Header: React.FC<Props> = ({
 
       <div title={syncMessage} style={{ ...liveStyle, color: syncStatus === 'error' ? 'var(--red)' : 'var(--green)' }}>
         <span style={{ ...dotStyle, background: syncStatus === 'error' ? 'var(--red)' : 'var(--green)' }} />
-        {syncStatus === 'supabase' ? 'SUPABASE' : syncStatus === 'loading' ? 'SYNCING' : syncStatus === 'error' ? 'SYNC ERROR' : 'LOCAL'}
+        {syncLabel}
       </div>
     </div>
   );
