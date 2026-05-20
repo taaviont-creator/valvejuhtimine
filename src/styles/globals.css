@@ -1,0 +1,101 @@
+/* styles/globals.css */
+:root {
+  --bg-base: #0a0e14;
+  --bg-panel: #0f1520;
+  --bg-card: #131c2b;
+  --bg-card-hover: #1a2535;
+  --bg-elevated: #1c2840;
+
+  --border: #1e3050;
+  --border-bright: #2a4570;
+
+  --cyan: #00d4ff;
+  --cyan-dim: #0099bb;
+  --cyan-glow: rgba(0, 212, 255, 0.15);
+
+  --green: #00ff88;
+  --green-dim: #00bb66;
+
+  --amber: #ffaa00;
+  --amber-dim: #cc8800;
+
+  --red: #ff3355;
+  --red-dim: #cc2244;
+
+  --text-primary: #e8f0ff;
+  --text-secondary: #7a9cc0;
+  --text-muted: #4a6080;
+  --text-mono: #a0c4e0;
+
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: var(--bg-panel); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+button {
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+}
+
+/* Status badge colors */
+.status-ok { color: var(--green); }
+.status-warning { color: var(--amber); }
+.status-critical { color: var(--red); }
+.status-incident { color: var(--cyan); }
+
+/* Severity colors */
+.sev-low { color: var(--green); }
+.sev-medium { color: var(--amber); }
+.sev-high { color: #ff7722; }
+.sev-critical { color: var(--red); }
+
+/* Blink animation for critical */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.blink { animation: blink 1.2s infinite; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.2s ease; }

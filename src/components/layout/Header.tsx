@@ -1,0 +1,157 @@
+import React from 'react';
+import { AppRole, Simulation, Warning } from '../../models';
+
+interface Props {
+  role: AppRole;
+  simulation: Simulation;
+  warnings: Warning[];
+  syncStatus: string;
+  syncMessage?: string;
+  onBack: () => void;
+  onStart?: () => void;
+  onReset?: () => void;
+}
+
+export const Header: React.FC<Props> = ({
+  role,
+  simulation,
+  warnings,
+  syncStatus,
+  syncMessage,
+  onBack,
+  onStart,
+  onReset,
+}) => {
+  const joinUrl = `${window.location.origin}${window.location.pathname}?join=${simulation.joinCode}&role=student`;
+
+  return (
+    <div style={headerStyle}>
+      <button onClick={onBack} style={ghostButtonStyle}>Exit</button>
+      <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
+
+      <div>
+        <div style={nameStyle}>{simulation.name}</div>
+        <div style={metaStyle}>Code {simulation.joinCode} | {simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
+      </div>
+
+      <div style={roleStyle(role)}>{role === 'facilitator' ? 'Teacher' : 'Student'}</div>
+
+      <input value={joinUrl} readOnly title="Student join link" style={joinLinkStyle} />
+
+      <div style={{ flex: 1 }} />
+
+      {onStart && simulation.status === 'setup' && (
+        <button onClick={onStart} style={primaryButtonStyle}>Start</button>
+      )}
+      {onReset && (
+        <button onClick={onReset} style={ghostButtonStyle}>Reset</button>
+      )}
+
+      {warnings.length > 0 && (
+        <div style={warningStyle}>{warnings.length} warning{warnings.length === 1 ? '' : 's'}</div>
+      )}
+
+      <div title={syncMessage} style={{ ...liveStyle, color: syncStatus === 'error' ? 'var(--red)' : 'var(--green)' }}>
+        <span style={{ ...dotStyle, background: syncStatus === 'error' ? 'var(--red)' : 'var(--green)' }} />
+        {syncStatus === 'supabase' ? 'SUPABASE' : syncStatus === 'loading' ? 'SYNCING' : syncStatus === 'error' ? 'SYNC ERROR' : 'LOCAL'}
+      </div>
+    </div>
+  );
+};
+
+const headerStyle: React.CSSProperties = {
+  height: 52,
+  background: 'var(--bg-panel)',
+  borderBottom: '1px solid var(--border)',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0 12px',
+  gap: 12,
+  flexShrink: 0,
+};
+
+const ghostButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  padding: '5px 9px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  ...ghostButtonStyle,
+  background: 'var(--cyan)',
+  borderColor: 'var(--cyan)',
+  color: '#001017',
+  fontWeight: 700,
+};
+
+const nameStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-display)',
+  color: 'var(--text-primary)',
+  fontSize: 16,
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
+const metaStyle: React.CSSProperties = {
+  marginTop: 3,
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  color: 'var(--text-muted)',
+  letterSpacing: 0.8,
+  textTransform: 'uppercase',
+};
+
+const roleStyle = (role: AppRole): React.CSSProperties => ({
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  letterSpacing: 1.5,
+  padding: '4px 8px',
+  borderRadius: 3,
+  background: role === 'facilitator' ? 'rgba(255,170,0,0.12)' : 'rgba(0,212,255,0.12)',
+  border: `1px solid ${role === 'facilitator' ? 'var(--amber-dim)' : 'var(--cyan-dim)'}`,
+  color: role === 'facilitator' ? 'var(--amber)' : 'var(--cyan)',
+  textTransform: 'uppercase',
+});
+
+const joinLinkStyle: React.CSSProperties = {
+  width: 285,
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-muted)',
+  padding: '5px 8px',
+  fontSize: 11,
+};
+
+const warningStyle: React.CSSProperties = {
+  padding: '4px 9px',
+  background: 'rgba(255,51,85,0.1)',
+  border: '1px solid rgba(255,51,85,0.4)',
+  borderRadius: 3,
+  color: 'var(--red)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const liveStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  letterSpacing: 1,
+};
+
+const dotStyle: React.CSSProperties = {
+  width: 6,
+  height: 6,
+  borderRadius: '50%',
+  display: 'inline-block',
+};
