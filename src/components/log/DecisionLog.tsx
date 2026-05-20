@@ -12,9 +12,15 @@ const actorColors: Record<string, string> = {
   system: 'var(--text-muted)',
 };
 
+const actorLabels: Record<string, string> = {
+  teacher: 'õppejõud',
+  student: 'korrapidaja',
+  system: 'süsteem',
+};
+
 export const DecisionLog: React.FC<Props> = ({ entries }) => {
   if (entries.length === 0) {
-    return <div style={emptyStyle}>No log entries yet</div>;
+    return <div style={emptyStyle}>Otsuste logis pole veel kirjeid</div>;
   }
 
   return (
@@ -22,7 +28,7 @@ export const DecisionLog: React.FC<Props> = ({ entries }) => {
       {entries.map((entry) => (
         <div key={entry.id} style={entryStyle}>
           <span style={timeStyle}>{formatTime(entry.createdAt)}</span>
-          <span style={{ ...actorStyle, color: actorColors[entry.actor] }}>{entry.actor}</span>
+          <span style={{ ...actorStyle, color: actorColors[entry.actor] }}>{actorLabels[entry.actor]}</span>
           <span style={{ color: 'var(--text-secondary)' }}>{entry.text}</span>
         </div>
       ))}

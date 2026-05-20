@@ -6,21 +6,21 @@ interface Props {
 }
 
 const warningGroups: Array<{ title: string; types: WarningType[]; color: string }> = [
-  { title: 'Building staffing', types: ['building_below_minimum'], color: 'var(--amber)' },
-  { title: 'Incident resources', types: ['incident_unassigned', 'incident_understaffed'], color: 'var(--red)' },
-  { title: 'Missing permissions', types: ['missing_escort_permission', 'missing_taser_permission'], color: 'var(--amber)' },
-  { title: 'Escort buses', types: ['bus_understaffed'], color: '#ff99cc' },
-  { title: 'Assignment conflicts', types: ['officer_already_assigned'], color: 'var(--red)' },
+  { title: 'Üksuse mehitus', types: ['building_below_minimum'], color: 'var(--amber)' },
+  { title: 'Sündmuse ressursid', types: ['incident_unassigned', 'incident_understaffed'], color: 'var(--red)' },
+  { title: 'Puuduvad õigused', types: ['missing_escort_permission', 'missing_taser_permission'], color: 'var(--amber)' },
+  { title: 'Saatebussid', types: ['bus_understaffed'], color: '#ff99cc' },
+  { title: 'Määramise konfliktid', types: ['officer_already_assigned'], color: 'var(--red)' },
 ];
 
 export const WarningList: React.FC<Props> = ({ warnings }) => {
   if (warnings.length === 0) {
-    return <div style={okStyle}>All staffing and incident requirements are currently met</div>;
+    return <div style={okStyle}>Kõik mehitus- ja sündmusenõuded on praegu täidetud</div>;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={summaryStyle}>{warnings.length} active warning{warnings.length === 1 ? '' : 's'}</div>
+      <div style={summaryStyle}>{warnings.length} aktiivne hoiatus{warnings.length === 1 ? '' : 't'}</div>
       {warningGroups.map((group) => {
         const groupWarnings = warnings.filter((warning) => group.types.includes(warning.type));
         if (groupWarnings.length === 0) return null;

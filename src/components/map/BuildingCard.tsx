@@ -48,18 +48,18 @@ export const BuildingCard: React.FC<Props> = ({
     : 'var(--border)';
 
   const status = critical
-    ? 'Critical'
+    ? 'Kriitiline'
     : activeIncidents.length > 0
-    ? 'Incident active'
+    ? 'Sündmus aktiivne'
     : belowMin
-    ? 'Below minimum'
-    : 'OK';
+    ? 'Alla miinimumi'
+    : 'Korras';
 
   return (
     <div onClick={onClick} style={cardStyle(building, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}>
       {activeIncidents.length > 0 && (
         <div style={incidentBadgeStyle(activeIncidents.some((incident) => incident.status === 'escalated'))}>
-          {activeIncidents.length === 1 ? 'Incident' : `${activeIncidents.length} incidents`}
+          {activeIncidents.length === 1 ? 'Sündmus' : `${activeIncidents.length} sündmust`}
         </div>
       )}
 
@@ -69,7 +69,7 @@ export const BuildingCard: React.FC<Props> = ({
         <span style={{ ...countStyle, color: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : 'var(--green)' }}>
           {officerCount}<span style={slashStyle}> / {building.minimumStaff}</span>
         </span>
-        <span style={minimumStyle}>staffed / min</span>
+        <span style={minimumStyle}>valves / min</span>
       </div>
 
       <div style={statusRowStyle}>
@@ -79,14 +79,14 @@ export const BuildingCard: React.FC<Props> = ({
 
       {activeIncidents.length > 0 && (
         <div style={activeIncidentTextStyle}>
-          Active: {activeIncidents.map((incident) => incident.title).join(', ')}
+          Aktiivne: {activeIncidents.map((incident) => incident.title).join(', ')}
         </div>
       )}
 
       {localOfficers.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 7 }}>
           {localOfficers.map((officer) => (
-            <span key={officer.id} title={`${officer.name} | ${officer.gender} | ${officer.hasEscortPermission ? 'escort' : 'no escort'} | ${officer.hasTaserPermission ? 'taser' : 'no taser'}`} style={officerChipStyle(officer)}>
+            <span key={officer.id} title={`${officer.name} | ${officer.gender === 'male' ? 'mees' : 'naine'} | ${officer.hasEscortPermission ? 'saateõigus' : 'saateõigus puudub'} | ${officer.hasTaserPermission ? 'EŠR õigus' : 'EŠR õigus puudub'}`} style={officerChipStyle(officer)}>
               {officer.name}
             </span>
           ))}
@@ -101,7 +101,7 @@ export const BuildingCard: React.FC<Props> = ({
           }}
           style={createButtonStyle}
         >
-          Create incident
+          Lisa sündmus
         </button>
       )}
     </div>

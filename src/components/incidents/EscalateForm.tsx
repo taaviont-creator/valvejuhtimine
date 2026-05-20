@@ -37,7 +37,7 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <div style={titleStyle}>Escalate incident</div>
+        <div style={titleStyle}>Lisa eskalatsioon / olukorra muutus</div>
         <div style={metaStyle}>{incident.title}</div>
 
         <div style={templateGridStyle}>
@@ -52,27 +52,27 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
           ))}
         </div>
 
-        <label style={labelStyle}>Update/comment</label>
+        <label style={labelStyle}>Olukorra muutus / kommentaar</label>
         <textarea value={text} onChange={(event) => setText(event.target.value)} rows={3} autoFocus style={{ ...inputStyle, resize: 'vertical', marginBottom: 12 }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 10 }}>
-          <FormField label="Severity">
+          <FormField label="Raskusaste">
             <select value={severity} onChange={(event) => setSeverity(event.target.value as IncidentSeverity)} style={inputStyle}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
+              <option value="low">Madal</option>
+              <option value="medium">Keskmine</option>
+              <option value="high">Kõrge</option>
+              <option value="critical">Kriitiline</option>
             </select>
           </FormField>
-          <FormField label="Officers">
+          <FormField label="Vajalik ametnike arv">
             <input type="number" min={1} max={20} value={requiredOfficers} onChange={(event) => setRequiredOfficers(Number(event.target.value))} style={inputStyle} />
           </FormField>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-          <CheckBox checked={requiresEscort} onChange={setRequiresEscort} label="Escort permission required" />
-          <CheckBox checked={requiresTaser} onChange={setRequiresTaser} label="Taser permission required" />
-          <CheckBox checked={externalEscortRequired} onChange={setExternalEscortRequired} label="External escort required" />
+          <CheckBox checked={requiresEscort} onChange={setRequiresEscort} label="Nõuab saateõigust" />
+          <CheckBox checked={requiresTaser} onChange={setRequiresTaser} label="Nõuab elektrišokirelva õigust" />
+          <CheckBox checked={externalEscortRequired} onChange={setExternalEscortRequired} label="Vanglaväline väljaviimine" />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -81,9 +81,9 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
             disabled={!text.trim()}
             style={{ ...primaryStyle, opacity: text.trim() ? 1 : 0.45 }}
           >
-            Save escalation
+            Salvesta eskalatsioon
           </button>
-          <button onClick={onCancel} style={secondaryStyle}>Cancel</button>
+          <button onClick={onCancel} style={secondaryStyle}>Tühista</button>
         </div>
       </div>
     </div>

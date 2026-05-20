@@ -5,6 +5,11 @@ import { WarningList } from '../warnings/WarningList';
 import { DecisionLog } from '../log/DecisionLog';
 
 type Tab = 'incidents' | 'warnings' | 'log';
+const actorLabels: Record<string, string> = {
+  teacher: 'õppejõud',
+  student: 'korrapidaja',
+  system: 'süsteem',
+};
 
 interface Props {
   incidents: Incident[];
@@ -37,17 +42,17 @@ export const RightSidebar: React.FC<Props> = ({
   return (
     <div style={sidebarStyle}>
       <div style={statusPanelStyle}>
-        <div style={panelLabelStyle}>{isFacilitator ? 'Student activity' : 'Situation status'}</div>
+        <div style={panelLabelStyle}>{isFacilitator ? 'Korrapidaja tegevus' : 'Olukorra staatus'}</div>
         {latestAction ? (
           <div style={latestActionStyle}>
-            <strong>{latestAction.actor}</strong> {latestAction.text}
+            <strong>{actorLabels[latestAction.actor] ?? latestAction.actor}</strong> {latestAction.text}
           </div>
         ) : (
-          <div style={mutedTextStyle}>No actions logged yet</div>
+          <div style={mutedTextStyle}>Tegevusi pole veel logitud</div>
         )}
         {warnings.length > 0 && (
           <div style={warningSummaryStyle}>
-            {warnings.length} active warning{warnings.length === 1 ? '' : 's'} - open Warnings for details
+            {warnings.length} aktiivne hoiatus{warnings.length === 1 ? '' : 't'} - ava detailideks Hoiatused
           </div>
         )}
       </div>
@@ -55,7 +60,7 @@ export const RightSidebar: React.FC<Props> = ({
       <div style={tabsStyle}>
         {(['incidents', 'warnings', 'log'] as Tab[]).map((item) => (
           <button key={item} onClick={() => setTab(item)} style={tabStyle(tab === item)}>
-            {item === 'incidents' ? `Incidents${activeIncidents.length ? ` ${activeIncidents.length}` : ''}` : item === 'warnings' ? `Warnings${warnings.length ? ` ${warnings.length}` : ''}` : 'Log'}
+            {item === 'incidents' ? `Sündmused${activeIncidents.length ? ` ${activeIncidents.length}` : ''}` : item === 'warnings' ? `Hoiatused${warnings.length ? ` ${warnings.length}` : ''}` : 'Otsuste logi'}
           </button>
         ))}
       </div>
@@ -65,10 +70,10 @@ export const RightSidebar: React.FC<Props> = ({
           <>
             {isFacilitator && (
               <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
-                Template incident
+                Lisa sündmus
               </button>
             )}
-            {incidents.length === 0 && <div style={emptyStyle}>No incidents yet</div>}
+            {incidents.length === 0 && <div style={emptyStyle}>Sündmusi pole veel</div>}
             {activeIncidents.map((incident) => (
               <IncidentCard
                 key={incident.id}
@@ -82,7 +87,7 @@ export const RightSidebar: React.FC<Props> = ({
             ))}
             {closedIncidents.length > 0 && (
               <>
-                <div style={closedLabelStyle}>Closed ({closedIncidents.length})</div>
+                <div style={closedLabelStyle}>Lõpetatud ({closedIncidents.length})</div>
                 {closedIncidents.map((incident) => (
                   <IncidentCard
                     key={incident.id}

@@ -36,10 +36,10 @@ export const FacilityMap: React.FC<Props> = ({
   }}>
     <div style={gridStyle} />
     <div style={mapAreaStyle}>
-      <SectionLabel x={60} y={40} text="Units" />
-      <SectionLabel x={60} y={260} text="Special areas" />
-      <SectionLabel x={60} y={460} text="Support services" />
-      <SectionLabel x={60} y={640} text="Escort buses and resource pool" />
+      <SectionLabel x={60} y={40} text="Üksused" />
+      <SectionLabel x={60} y={260} text="Eri- ja vastuvõtualad" />
+      <SectionLabel x={60} y={460} text="Tugiteenused" />
+      <SectionLabel x={60} y={640} text="Saatebussid ja valves olevad ametnikud" />
 
       {buildings.map((building) => (
         <BuildingCard

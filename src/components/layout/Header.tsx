@@ -25,43 +25,44 @@ export const Header: React.FC<Props> = ({
   const joinUrl = `${window.location.origin}${window.location.pathname}?join=${simulation.joinCode}&role=student`;
   const syncLabel =
     syncStatus === 'supabase'
-      ? 'Supabase sync enabled'
+      ? 'Supabase sünkroonimine sees'
       : syncStatus === 'local'
-      ? 'Local demo mode'
+      ? 'Kohalik demorežiim'
       : syncStatus === 'loading'
-      ? 'Syncing'
-      : 'Sync error';
+      ? 'Sünkroonimine'
+      : 'Sünkroonimise viga';
+  const statusLabel = simulation.status === 'setup' ? 'seadistamine' : simulation.status === 'active' ? 'aktiivne' : 'lõpetatud';
 
   return (
     <div style={headerStyle}>
-      <button onClick={onBack} style={ghostButtonStyle}>Exit</button>
+      <button onClick={onBack} style={ghostButtonStyle}>Välju</button>
       <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
 
       <div>
         <div style={nameStyle}>{simulation.name}</div>
-        <div style={metaStyle}>{simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
+        <div style={metaStyle}>{statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}</div>
       </div>
 
       <div style={joinCodeStyle}>
-        <span>Join code</span>
+        <span>Simulatsiooni kood</span>
         <strong>{simulation.joinCode}</strong>
       </div>
 
-      <div style={roleStyle(role)}>{role === 'facilitator' ? 'Teacher' : 'Student'}</div>
+      <div style={roleStyle(role)}>{role === 'facilitator' ? 'Õppejõud / läbiviija' : 'Korrapidaja / juht'}</div>
 
-      <input value={joinUrl} readOnly title="Student join link" style={joinLinkStyle} />
+      <input value={joinUrl} readOnly title="Korrapidaja liitumislink" style={joinLinkStyle} />
 
       <div style={{ flex: 1 }} />
 
       {onStart && simulation.status === 'setup' && (
-        <button onClick={onStart} style={primaryButtonStyle}>Start</button>
+        <button onClick={onStart} style={primaryButtonStyle}>Käivita</button>
       )}
       {onReset && (
-        <button onClick={onReset} style={ghostButtonStyle}>Reset</button>
+        <button onClick={onReset} style={ghostButtonStyle}>Lähtesta</button>
       )}
 
       {warnings.length > 0 && (
-        <div style={warningStyle}>{warnings.length} warning{warnings.length === 1 ? '' : 's'}</div>
+        <div style={warningStyle}>{warnings.length} hoiatus{warnings.length === 1 ? '' : 't'}</div>
       )}
 
       <div title={syncMessage} style={{ ...liveStyle, color: syncStatus === 'error' ? 'var(--red)' : 'var(--green)' }}>

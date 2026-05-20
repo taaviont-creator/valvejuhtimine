@@ -10,9 +10,9 @@ interface Props {
 
 export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, syncMessage }) => {
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [simulationName, setSimulationName] = useState('Demo shift exercise');
-  const [teacherName, setTeacherName] = useState('Teacher');
-  const [studentName, setStudentName] = useState('Student');
+  const [simulationName, setSimulationName] = useState('Valvejuhtimise õppus');
+  const [teacherName, setTeacherName] = useState('Õppejõud');
+  const [studentName, setStudentName] = useState('Korrapidaja');
   const [setupMode, setSetupMode] = useState<SetupMode>('teacher_assigned');
   const [joinCode, setJoinCode] = useState(search.get('join') ?? '');
   const [joinRole, setJoinRole] = useState<AppRole>(search.get('role') === 'teacher' ? 'facilitator' : 'commander');
@@ -29,46 +29,46 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
     <div style={pageStyle}>
       <div style={{ width: 'min(1040px, calc(100vw - 48px))' }}>
         <div style={{ marginBottom: 28 }}>
-          <div style={eyebrowStyle}>Training simulation</div>
-          <h1 style={titleStyle}>Prison Shift Resource Simulation</h1>
+          <div style={eyebrowStyle}>Õppesimulatsioon</div>
+          <h1 style={titleStyle}>Valvejuhtimise ressursisimulatsioon</h1>
           <p style={subtitleStyle}>
-            Teacher feeds incidents. Student moves limited officer resources. Both views share one live simulation state.
+            Õppejõud annab olukorrad ette. Korrapidaja juhib piiratud ametnike ressurssi. Mõlemad vaated on samas simulatsioonis.
           </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
           <section style={panelStyle}>
-            <div style={panelTitleStyle}>Teacher creates simulation</div>
-            <Field label="Simulation name">
+            <div style={panelTitleStyle}>Õppejõud / läbiviija loob simulatsiooni</div>
+            <Field label="Simulatsiooni nimi">
               <input value={simulationName} onChange={(event) => setSimulationName(event.target.value)} style={inputStyle} />
             </Field>
-            <Field label="Teacher name">
+            <Field label="Õppejõu nimi">
               <input value={teacherName} onChange={(event) => setTeacherName(event.target.value)} style={inputStyle} />
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
               <ModeButton
-                title="Mode A"
-                text="Teacher pre-assigns officers to starting units."
+                title="Režiim A"
+                text="Õppejõud määrab ametnikud alguses üksustesse."
                 active={setupMode === 'teacher_assigned'}
                 onClick={() => setSetupMode('teacher_assigned')}
               />
               <ModeButton
-                title="Mode B"
-                text="Student starts with all officers in the resource pool."
+                title="Režiim B"
+                text="Korrapidaja alustab nii, et kõik ametnikud on valves olevate ametnike all."
                 active={setupMode === 'student_places_officers'}
                 onClick={() => setSetupMode('student_places_officers')}
               />
             </div>
 
             <button style={primaryButtonStyle} onClick={() => onCreate(simulationName, setupMode, teacherName)}>
-              Create simulation
+              Loo simulatsioon
             </button>
           </section>
 
           <section style={panelStyle}>
-            <div style={panelTitleStyle}>Join existing simulation</div>
-            <Field label="Simulation code">
+            <div style={panelTitleStyle}>Liitu olemasoleva simulatsiooniga</div>
+            <Field label="Simulatsiooni kood">
               <input
                 value={joinCode}
                 onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
@@ -76,7 +76,7 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
                 style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: 3 }}
               />
             </Field>
-            <Field label="Display name">
+            <Field label="Kuvatav nimi">
               <input
                 value={joinRole === 'facilitator' ? teacherName : studentName}
                 onChange={(event) => (joinRole === 'facilitator' ? setTeacherName(event.target.value) : setStudentName(event.target.value))}
@@ -85,16 +85,16 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
             </Field>
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-              <RoleButton label="Student" active={joinRole === 'commander'} onClick={() => setJoinRole('commander')} />
-              <RoleButton label="Teacher" active={joinRole === 'facilitator'} onClick={() => setJoinRole('facilitator')} />
+              <RoleButton label="Korrapidaja / juht" active={joinRole === 'commander'} onClick={() => setJoinRole('commander')} />
+              <RoleButton label="Õppejõud" active={joinRole === 'facilitator'} onClick={() => setJoinRole('facilitator')} />
             </div>
 
             <button style={primaryButtonStyle} disabled={!joinCode.trim() || joining} onClick={join}>
-              {joining ? 'Joining...' : 'Join simulation'}
+              {joining ? 'Liitumine...' : 'Liitu simulatsiooniga'}
             </button>
             {(syncMessage || syncStatus === 'local' || syncStatus === 'supabase') && (
               <div style={noteStyle}>
-                {syncMessage ?? (syncStatus === 'supabase' ? 'Supabase sync enabled' : 'Local demo mode')}
+                {syncMessage ?? (syncStatus === 'supabase' ? 'Supabase sünkroonimine sees' : 'Kohalik demorežiim')}
               </div>
             )}
           </section>

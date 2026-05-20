@@ -20,12 +20,12 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  available: 'POOL',
-  in_building: 'BUILDING',
-  on_incident: 'INCIDENT',
-  on_escort: 'BUS',
-  busy: 'BUSY',
-  unavailable: 'OUT',
+  available: 'VABA',
+  in_building: 'ÜKSUSES',
+  on_incident: 'SÜNDMUSEL',
+  on_escort: 'SAATMISEL',
+  busy: 'HÕIVATUD',
+  unavailable: 'VÄLJAS',
 };
 
 export const OfficerCard: React.FC<Props> = ({
@@ -37,7 +37,7 @@ export const OfficerCard: React.FC<Props> = ({
   busName,
 }) => {
   const color = statusColors[officer.status] ?? 'var(--text-muted)';
-  const location = busName ?? incidentTitle ?? buildingName ?? 'No location';
+  const location = busName ?? incidentTitle ?? buildingName ?? 'Asukoht puudub';
 
   return (
     <div onClick={onClick} style={cardStyle(selected, color)}>
@@ -50,14 +50,14 @@ export const OfficerCard: React.FC<Props> = ({
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-        <Badge active={officer.hasEscortPermission} label="Escort" color="var(--green)" />
-        <Badge active={officer.hasTaserPermission} label="Taser" color="var(--amber)" />
+        <Badge active={officer.hasEscortPermission} label="Saateõigus" color="var(--green)" />
+        <Badge active={officer.hasTaserPermission} label="EŠR õigus" color="var(--amber)" />
       </div>
 
       <div style={locationStyle}>{location}</div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 7 }}>
         <span style={{ ...actionStyle, borderColor: selected ? color : 'var(--border-bright)', color: selected ? color : 'var(--text-secondary)' }}>
-          Move / Assign
+          Suuna / määra
         </span>
       </div>
     </div>

@@ -10,10 +10,17 @@ const severityColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  active: 'Active',
-  escalated: 'Escalated',
-  under_control: 'Under control',
-  closed: 'Closed',
+  active: 'Aktiivne',
+  escalated: 'Eskaleerunud',
+  under_control: 'Kontrolli all',
+  closed: 'Lõpetatud',
+};
+
+const severityLabels: Record<string, string> = {
+  low: 'Madal',
+  medium: 'Keskmine',
+  high: 'Kõrge',
+  critical: 'Kriitiline',
 };
 
 interface Props {
@@ -49,7 +56,7 @@ export const IncidentCard: React.FC<Props> = ({
             <span style={{ ...statusStyle, color: incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--text-muted)' : color }}>
               {statusLabels[incident.status]}
             </span>
-            <span style={{ ...severityStyle, color }}>{incident.severity}</span>
+            <span style={{ ...severityStyle, color }}>{severityLabels[incident.severity]}</span>
           </div>
         </div>
 
@@ -57,16 +64,16 @@ export const IncidentCard: React.FC<Props> = ({
 
         <div style={{ display: 'flex', gap: 5, marginTop: 7, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ ...resourceStyle, color: assigned.length >= incident.requiredOfficers ? 'var(--green)' : 'var(--red)' }}>
-            Assigned {assigned.length} / Required {incident.requiredOfficers}
+            Määratud {assigned.length} / Vajalik {incident.requiredOfficers}
           </span>
-          <Tag color={incident.requiresEscortPermission ? 'var(--green)' : 'var(--text-muted)'} text={incident.requiresEscortPermission ? `Escort required ${escortCount}` : 'No escort req'} />
-          <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `Taser required ${taserCount}` : 'No taser req'} />
-          {incident.externalEscortRequired && <Tag color="#ff99cc" text="External escort" />}
+          <Tag color={incident.requiresEscortPermission ? 'var(--green)' : 'var(--text-muted)'} text={incident.requiresEscortPermission ? `Saateõigus ${escortCount}` : 'Saateõigust ei nõua'} />
+          <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `EŠR õigus ${taserCount}` : 'EŠR ei nõua'} />
+          {incident.externalEscortRequired && <Tag color="#ff99cc" text="Väljaviimine" />}
         </div>
 
         {latestUpdate && (
           <div style={latestUpdateStyle}>
-            Latest update: {latestUpdate.text}
+            Viimane olukorra muutus: {latestUpdate.text}
           </div>
         )}
       </div>
@@ -84,9 +91,9 @@ export const IncidentCard: React.FC<Props> = ({
           )}
 
           <div style={{ marginBottom: 8 }}>
-            <div style={miniLabelStyle}>Assigned officers</div>
+            <div style={miniLabelStyle}>Määratud ametnikud</div>
             {assigned.length === 0 ? (
-              <div style={emptyStyle}>No officers assigned</div>
+              <div style={emptyStyle}>Ametnikke pole määratud</div>
             ) : (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {assigned.map((officer) => (
@@ -100,8 +107,8 @@ export const IncidentCard: React.FC<Props> = ({
 
       {isFacilitator && incident.status !== 'closed' && (
         <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <button onClick={onEscalate} style={{ ...actionButtonStyle, color: 'var(--amber)', borderColor: 'var(--amber)' }}>Escalate</button>
-          <button onClick={onClose} style={actionButtonStyle}>Close</button>
+          <button onClick={onEscalate} style={{ ...actionButtonStyle, color: 'var(--amber)', borderColor: 'var(--amber)' }}>Lisa eskalatsioon</button>
+          <button onClick={onClose} style={actionButtonStyle}>Lõpeta sündmus</button>
         </div>
       )}
     </div>

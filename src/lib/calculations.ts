@@ -33,7 +33,7 @@ export function calculateWarnings(
       warnings.push({
         id: `building-min-${building.id}`,
         type: 'building_below_minimum',
-        message: `${building.name}: ${count} officers present, minimum is ${building.minimumStaff}. Move officers here or lower the minimum.`,
+        message: `${building.name}: üksus on alla miinimumkoosseisu (${count}/${building.minimumStaff}). Suuna siia ametnikke või muuda miinimumi.`,
         relatedBuildingId: building.id,
       });
     }
@@ -47,7 +47,7 @@ export function calculateWarnings(
       warnings.push({
         id: `incident-empty-${incident.id}`,
         type: 'incident_unassigned',
-        message: `Incident "${incident.title}" has no officers assigned yet.`,
+        message: `Sündmusele "${incident.title}" ei ole veel ametnikke määratud.`,
         relatedIncidentId: incident.id,
       });
     }
@@ -56,7 +56,7 @@ export function calculateWarnings(
       warnings.push({
         id: `incident-staff-${incident.id}`,
         type: 'incident_understaffed',
-        message: `Incident "${incident.title}": ${assigned.length} assigned, ${incident.requiredOfficers} required.`,
+        message: `Sündmusele "${incident.title}" on määratud vähem ametnikke kui nõutud (${assigned.length}/${incident.requiredOfficers}).`,
         relatedIncidentId: incident.id,
       });
     }
@@ -67,7 +67,7 @@ export function calculateWarnings(
         warnings.push({
           id: `incident-escort-${incident.id}`,
           type: 'missing_escort_permission',
-          message: `Incident "${incident.title}" requires escort-qualified officers. Assigned escort-qualified: ${escortCount}/${incident.requiredOfficers}.`,
+          message: `Sündmusel "${incident.title}" puudub vajalik saateõigus (${escortCount}/${incident.requiredOfficers}).`,
           relatedIncidentId: incident.id,
         });
       }
@@ -79,7 +79,7 @@ export function calculateWarnings(
         warnings.push({
           id: `incident-taser-${incident.id}`,
           type: 'missing_taser_permission',
-          message: `Incident "${incident.title}" requires taser-qualified officers. Assigned taser-qualified: ${taserCount}/${incident.requiredOfficers}.`,
+          message: `Sündmusel "${incident.title}" puudub vajalik elektrišokirelva õigus (${taserCount}/${incident.requiredOfficers}).`,
           relatedIncidentId: incident.id,
         });
       }
@@ -95,7 +95,7 @@ export function calculateWarnings(
       warnings.push({
         id: `bus-escort-${bus.id}`,
         type: 'bus_understaffed',
-        message: `${bus.name}: ${escortQualified} escort-qualified officers assigned, ${bus.minimumEscortQualified} required.`,
+        message: `${bus.name} ei ole nõuetekohaselt mehitatud: saateõigusega ametnikke ${escortQualified}/${bus.minimumEscortQualified}.`,
         relatedBusId: bus.id,
       });
     }

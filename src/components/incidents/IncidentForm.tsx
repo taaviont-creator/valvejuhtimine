@@ -49,10 +49,10 @@ export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, on
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <div style={titleStyle}>Facilitator incident template</div>
-        <div style={metaStyle}>Select unit, choose template, edit details, activate</div>
+        <div style={titleStyle}>Õppejõu sündmuse mall</div>
+        <div style={metaStyle}>Vali üksus, vali mall, muuda detaile ja käivita sündmus</div>
 
-        <FormField label="Building / unit">
+        <FormField label="Üksus / hoone">
           <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={inputStyle}>
             {selectableBuildings.map((building) => (
               <option key={building.id} value={building.id}>{building.name}</option>
@@ -68,45 +68,45 @@ export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, on
               style={templateButtonStyle(selectedTemplateId === template.id)}
             >
               <strong>{template.title}</strong>
-              <span>{template.requiredOfficers} officers | {template.severity}</span>
+              <span>{template.requiredOfficers} ametnikku | {severityLabels[template.severity]}</span>
             </button>
           ))}
         </div>
 
-        <FormField label="Title">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Manual incident title..." autoFocus style={inputStyle} />
+        <FormField label="Pealkiri">
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Sündmuse pealkiri..." autoFocus style={inputStyle} />
         </FormField>
 
-        <FormField label="Description">
+        <FormField label="Kirjeldus">
           <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
         </FormField>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 10 }}>
-          <FormField label="Severity">
+          <FormField label="Raskusaste">
             <select value={severity} onChange={(event) => setSeverity(event.target.value as IncidentSeverity)} style={inputStyle}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
+              <option value="low">Madal</option>
+              <option value="medium">Keskmine</option>
+              <option value="high">Kõrge</option>
+              <option value="critical">Kriitiline</option>
             </select>
           </FormField>
 
-          <FormField label="Officers">
+          <FormField label="Vajalik ametnike arv">
             <input type="number" min={1} max={20} value={requiredOfficers} onChange={(event) => setRequiredOfficers(Number(event.target.value))} style={inputStyle} />
           </FormField>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
-          <CheckBox checked={requiresEscort} onChange={setRequiresEscort} label="Escort permission required" />
-          <CheckBox checked={requiresTaser} onChange={setRequiresTaser} label="Taser permission required" />
-          <CheckBox checked={externalEscortRequired} onChange={setExternalEscortRequired} label="External escort required" />
+          <CheckBox checked={requiresEscort} onChange={setRequiresEscort} label="Nõuab saateõigust" />
+          <CheckBox checked={requiresTaser} onChange={setRequiresTaser} label="Nõuab elektrišokirelva õigust" />
+          <CheckBox checked={externalEscortRequired} onChange={setExternalEscortRequired} label="Vanglaväline väljaviimine" />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={submit} disabled={!title.trim() || !buildingId} style={{ ...primaryStyle, opacity: title.trim() && buildingId ? 1 : 0.45 }}>
-            Activate incident
+            Käivita sündmus
           </button>
-          <button onClick={onCancel} style={secondaryStyle}>Cancel</button>
+          <button onClick={onCancel} style={secondaryStyle}>Tühista</button>
         </div>
       </div>
     </div>
@@ -126,6 +126,13 @@ const CheckBox: React.FC<{ checked: boolean; onChange: (value: boolean) => void;
     {label}
   </label>
 );
+
+const severityLabels: Record<IncidentSeverity, string> = {
+  low: 'madal',
+  medium: 'keskmine',
+  high: 'kõrge',
+  critical: 'kriitiline',
+};
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',

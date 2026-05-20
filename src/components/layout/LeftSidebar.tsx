@@ -43,7 +43,7 @@ export const LeftSidebar: React.FC<Props> = ({
 
   return (
     <div style={sidebarStyle}>
-      <SectionHeader title="Officers" count={officers.length} />
+      <SectionHeader title="Ametnikud" count={officers.length} />
 
       <div style={listStyle}>
         {(['available', 'in_building', 'on_incident', 'on_escort', 'busy', 'unavailable'] as const).map((status) => {
@@ -82,7 +82,7 @@ export const LeftSidebar: React.FC<Props> = ({
       {role === 'facilitator' && simulation.status === 'setup' && (
         <div style={setupShellStyle}>
           <button style={setupToggleStyle} onClick={() => setSetupOpen((value) => !value)}>
-            Setup controls {setupOpen ? '-' : '+'}
+            Seadistuse juhtelemendid {setupOpen ? '-' : '+'}
           </button>
           {setupOpen && (
             <TeacherSetup
@@ -117,7 +117,7 @@ const TeacherSetup: React.FC<{
 
   return (
     <div style={{ padding: 8 }}>
-      <div style={miniLabelStyle}>Setup mode</div>
+      <div style={miniLabelStyle}>Seadistuse režiim</div>
       <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
         <SmallButton disabled={!canEditMode} active={simulation.setupMode === 'teacher_assigned'} onClick={() => onSetSetupMode('teacher_assigned')}>
           A
@@ -127,12 +127,12 @@ const TeacherSetup: React.FC<{
         </SmallButton>
       </div>
 
-      <div style={miniLabelStyle}>Create officer</div>
-      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Officer code" style={smallInputStyle} />
+      <div style={miniLabelStyle}>Lisa ametnik</div>
+      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ametniku kood" style={smallInputStyle} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 5 }}>
         <select value={gender} onChange={(event) => setGender(event.target.value as OfficerGender)} style={smallInputStyle}>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
+          <option value="male">Mees</option>
+          <option value="female">Naine</option>
         </select>
         <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={smallInputStyle}>
           {buildings.filter((building) => !building.isResourcePool).map((building) => (
@@ -140,8 +140,8 @@ const TeacherSetup: React.FC<{
           ))}
         </select>
       </div>
-      <label style={checkStyle}><input type="checkbox" checked={escort} onChange={(event) => setEscort(event.target.checked)} /> Escort</label>
-      <label style={checkStyle}><input type="checkbox" checked={taser} onChange={(event) => setTaser(event.target.checked)} /> Taser</label>
+      <label style={checkStyle}><input type="checkbox" checked={escort} onChange={(event) => setEscort(event.target.checked)} /> Saateõigus</label>
+      <label style={checkStyle}><input type="checkbox" checked={taser} onChange={(event) => setTaser(event.target.checked)} /> EŠR õigus</label>
       <button
         style={wideSmallButtonStyle}
         onClick={() => {
@@ -149,10 +149,10 @@ const TeacherSetup: React.FC<{
           setName('');
         }}
       >
-        Add officer
+        Lisa ametnik
       </button>
 
-      <div style={{ ...miniLabelStyle, marginTop: 12 }}>Minimum staffing</div>
+      <div style={{ ...miniLabelStyle, marginTop: 12 }}>Miinimumkoosseis</div>
       <div style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {buildings.filter((building) => !building.isResourcePool).map((building) => (
           <label key={building.id} style={minRowStyle}>

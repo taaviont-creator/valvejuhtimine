@@ -18,6 +18,8 @@ import {
   Warning,
 } from '../models';
 import {
+  BUILDING_NAMES_BY_ID,
+  BUS_NAMES_BY_ID,
   RESOURCE_POOL_ID,
   createDefaultBuildings,
   createDefaultBuses,
@@ -65,7 +67,7 @@ function emptyState(): AppState {
 }
 
 function localSyncMessage() {
-  return supabaseConfigWarning ?? (hasSupabaseConfig ? 'Supabase connection failed, using local mode' : undefined);
+  return supabaseConfigWarning ?? (hasSupabaseConfig ? 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku režiimi' : undefined);
 }
 
 function toSnapshot(state: AppState): SimulationSnapshot | null {
@@ -82,10 +84,21 @@ function toSnapshot(state: AppState): SimulationSnapshot | null {
 }
 
 function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
+  const buildings = snapshot.buildings.map((building) => ({
+    ...building,
+    name: BUILDING_NAMES_BY_ID[building.id] ?? (building.isResourcePool ? BUILDING_NAMES_BY_ID[RESOURCE_POOL_ID] : building.name),
+  }));
+  const buses = snapshot.buses.map((bus) => ({
+    ...bus,
+    name: BUS_NAMES_BY_ID[bus.id] ?? bus.name,
+  }));
+
   return {
     ...state,
     ...snapshot,
-    warnings: calculateWarnings(snapshot.buildings, snapshot.officers, snapshot.incidents, snapshot.buses),
+    buildings,
+    buses,
+    warnings: calculateWarnings(buildings, snapshot.officers, snapshot.incidents, buses),
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
     syncMessage: supabaseConfigWarning,
   };
@@ -119,7 +132,7 @@ function finalizeState(previous: AppState, next: AppState): AppState {
   const previousWarnings = new Set(previous.warnings.map(warningSignature));
   const warnings = calculateWarnings(next.buildings, next.officers, next.incidents, next.buses);
   const newWarnings = warnings.filter((warning) => !previousWarnings.has(warningSignature(warning)));
-  const warningLogs = newWarnings.map((warning) => logEntry(next.simulation!.id, 'system', `Warning triggered: ${warning.message}`));
+  const warningLogs = newWarnings.map((warning) => logEntry(next.simulation!.id, 'system', `Hoiatus tekkis: ${warning.message}`));
 
   return {
     ...next,
@@ -155,7 +168,7 @@ export function useSimulation() {
         setState((current) => ({
           ...current,
           syncStatus: 'error',
-          syncMessage: error instanceof Error ? error.message : 'Sync failed',
+          syncMessage: error instanceof Error ? error.message : 'Sünkroonimine ebaõnnestus',
         }));
       });
   }, []);
@@ -183,14 +196,14 @@ export function useSimulation() {
       const simulationId = uuidv4();
       const joinCode = generateJoinCode();
       const simulation: Simulation = {
-        ...createDefaultSimulation(simulationId, joinCode, name.trim() || 'Prison shift simulation'),
+        ...createDefaultSimulation(simulationId, joinCode, name.trim() || 'Valvejuhtimise simulatsioon'),
         setupMode,
       };
       const participant: Participant = {
         id: uuidv4(),
         simulationId,
         role: 'teacher',
-        displayName: displayName.trim() || 'Teacher',
+        displayName: displayName.trim() || 'Õppejõud',
         joinedAt: now(),
       };
       const buildings = createDefaultBuildings(simulationId);
@@ -207,7 +220,7 @@ export function useSimulation() {
         buses,
         incidents: [],
         decisionLog: [
-          logEntry(simulationId, 'teacher', `Simulation created (${setupMode === 'teacher_assigned' ? 'teacher pre-assigns officers' : 'student places officers'})`),
+          logEntry(simulationId, 'teacher', `Simulatsioon loodud (${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'})`),
         ],
       });
       setState(initial);
@@ -219,11 +232,11 @@ export function useSimulation() {
 
   const joinSimulation = useCallback(
     async (joinCode: string, role: AppRole, displayName: string) => {
-      setState((current) => ({ ...current, syncStatus: 'loading', syncMessage: 'Joining simulation...' }));
+      setState((current) => ({ ...current, syncStatus: 'loading', syncMessage: 'Liitumine simulatsiooniga...' }));
       try {
         const normalizedJoinCode = normalizeJoinCode(joinCode);
         if (!normalizedJoinCode) {
-          setState((current) => ({ ...current, syncStatus: hasSupabaseConfig ? 'supabase' : 'local', syncMessage: 'Simulation code not found' }));
+          setState((current) => ({ ...current, syncStatus: hasSupabaseConfig ? 'supabase' : 'local', syncMessage: 'Simulatsiooni koodi ei leitud' }));
           return false;
         }
 
@@ -233,7 +246,7 @@ export function useSimulation() {
           setState((current) => ({
             ...current,
             syncStatus: result.mode,
-            syncMessage: result.message ?? 'Simulation code not found',
+            syncMessage: result.message ?? 'Simulatsiooni koodi ei leitud',
           }));
           return false;
         }
@@ -242,7 +255,7 @@ export function useSimulation() {
           id: uuidv4(),
           simulationId: snapshot.simulation.id,
           role: role === 'facilitator' ? 'teacher' : 'student',
-          displayName: displayName.trim() || (role === 'facilitator' ? 'Teacher' : 'Student'),
+          displayName: displayName.trim() || (role === 'facilitator' ? 'Õppejõud' : 'Korrapidaja'),
           joinedAt: now(),
         };
 
@@ -255,7 +268,7 @@ export function useSimulation() {
           syncMessage: result.message,
           participants: [...snapshot.participants, participant],
           decisionLog: [
-            logEntry(snapshot.simulation.id, role === 'facilitator' ? 'teacher' : 'student', `${participant.displayName} joined simulation`),
+            logEntry(snapshot.simulation.id, role === 'facilitator' ? 'teacher' : 'student', `${participant.displayName} liitus simulatsiooniga`),
             ...snapshot.decisionLog,
           ],
         });
@@ -268,7 +281,7 @@ export function useSimulation() {
         setState((current) => ({
           ...current,
           syncStatus: 'error',
-          syncMessage: error instanceof Error ? error.message : 'Unable to join simulation',
+          syncMessage: error instanceof Error ? error.message : 'Simulatsiooniga liitumine ebaõnnestus',
         }));
         return false;
       }
@@ -295,7 +308,7 @@ export function useSimulation() {
           incidents: [],
         },
         'teacher',
-        'Simulation reset to starting situation'
+        'Simulatsioon lähtestati algolukorda'
       );
     });
   }, [commit]);
@@ -306,7 +319,7 @@ export function useSimulation() {
       return appendLog(
         { ...current, simulation: { ...current.simulation, status: 'active' } },
         actorForRole(current.role),
-        'Simulation started'
+        'Simulatsioon käivitati'
       );
     });
   }, [commit]);
@@ -335,7 +348,7 @@ export function useSimulation() {
             incidents: [],
           },
           'teacher',
-          `Setup mode changed to ${setupMode === 'teacher_assigned' ? 'teacher pre-assigns officers' : 'student places officers'}`
+          `Algseadistuse režiim muudeti: ${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'}`
         );
       });
     },
@@ -369,7 +382,7 @@ export function useSimulation() {
             incidents: removeOfficerFromAllIncidents(officerId, current.incidents),
           },
           actorForRole(current.role),
-          `${officer.name} moved to ${building.name}`
+          `Ametnik ${officer.name} suunati: ${building.name}`
         );
       });
     },
@@ -399,7 +412,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, officers },
           actorForRole(current.role),
-          `${officer.name} assigned to incident "${incident.title}"`
+          `Ametnik ${officer.name} määrati sündmusele "${incident.title}"`
         );
       });
     },
@@ -426,7 +439,7 @@ export function useSimulation() {
             : item
         );
 
-        return appendLog({ ...current, officers }, actorForRole(current.role), `${officer.name} assigned to ${bus.name}`);
+        return appendLog({ ...current, officers }, actorForRole(current.role), `Ametnik ${officer.name} määrati: ${bus.name}`);
       });
     },
     [commit]
@@ -472,7 +485,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents: [...current.incidents, incident] },
           'teacher',
-          `Incident activated: "${title}" at ${building.name}`
+          `Sündmus lisatud: "${title}" asukohas ${building.name}`
         );
       });
     },
@@ -508,7 +521,7 @@ export function useSimulation() {
               }
             : item
         );
-        return appendLog({ ...current, incidents }, 'teacher', `Incident escalated: "${incident.title}"`);
+        return appendLog({ ...current, incidents }, 'teacher', `Sündmust eskaleeriti: "${incident.title}"`);
       });
     },
     [commit]
@@ -534,7 +547,7 @@ export function useSimulation() {
               }
             : officer
         );
-        return appendLog({ ...current, incidents, officers }, 'teacher', `Incident closed: "${incident.title}"`);
+        return appendLog({ ...current, incidents, officers }, 'teacher', `Sündmus lõpetati: "${incident.title}"`);
       });
     },
     [commit]
@@ -549,7 +562,7 @@ export function useSimulation() {
         const buildings = current.buildings.map((item) =>
           item.id === buildingId ? { ...item, minimumStaff: Math.max(0, minimumStaff) } : item
         );
-        return appendLog({ ...current, buildings }, 'teacher', `${building.name} minimum staffing set to ${minimumStaff}`);
+        return appendLog({ ...current, buildings }, 'teacher', `${building.name} miinimumkoosseis määrati: ${minimumStaff}`);
       });
     },
     [commit]
@@ -573,7 +586,7 @@ export function useSimulation() {
         const officer: Officer = {
           id: uuidv4(),
           simulationId: current.simulation.id,
-          name: name.trim() || `O${current.officers.length + 1}`,
+          name: name.trim() || `A${current.officers.length + 1}`,
           gender,
           hasEscortPermission,
           hasTaserPermission,
@@ -582,7 +595,7 @@ export function useSimulation() {
           currentIncidentId: null,
           currentBusId: null,
         };
-        return appendLog({ ...current, officers: [...current.officers, officer] }, 'teacher', `Officer created: ${officer.name}`);
+        return appendLog({ ...current, officers: [...current.officers, officer] }, 'teacher', `Ametnik lisatud: ${officer.name}`);
       });
     },
     [commit]

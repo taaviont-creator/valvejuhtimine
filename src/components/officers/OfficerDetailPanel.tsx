@@ -3,6 +3,15 @@ import { Building, EscortBus, Incident, Officer } from '../../models';
 
 type DestinationType = 'building' | 'incident' | 'bus' | 'pool';
 
+const statusLabels: Record<Officer['status'], string> = {
+  available: 'vaba',
+  in_building: 'üksuses',
+  on_incident: 'sündmusel',
+  on_escort: 'saatmisel',
+  busy: 'hõivatud',
+  unavailable: 'väljas',
+};
+
 interface Props {
   officer: Officer;
   buildings: Building[];
@@ -33,7 +42,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
     buses.find((bus) => bus.id === officer.currentBusId)?.name ??
     incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
     buildings.find((building) => building.id === officer.currentBuildingId)?.name ??
-    'No location';
+    'Asukoht puudub';
 
   const destinationCount: Record<DestinationType, number> = {
     building: buildings.filter((building) => !building.isResourcePool).length,
@@ -47,23 +56,23 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ ...nameStyle, color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc' }}>{officer.name}</div>
-          <div style={metaStyle}>{officer.gender === 'male' ? 'Male' : 'Female'}</div>
+          <div style={metaStyle}>{officer.gender === 'male' ? 'Mees' : 'Naine'}</div>
         </div>
         <button onClick={onClose} style={closeStyle}>x</button>
       </div>
 
       <div style={currentLocationStyle}>
-        <span>{officer.status.replace('_', ' ')}</span>
+        <span>{statusLabels[officer.status]}</span>
         <strong>{currentLocation}</strong>
       </div>
 
       <div style={{ display: 'flex', gap: 6 }}>
-        <RightBadge label="Escort" active={officer.hasEscortPermission} />
-        <RightBadge label="Taser" active={officer.hasTaserPermission} />
+        <RightBadge label="Saateõigus" active={officer.hasEscortPermission} />
+        <RightBadge label="EŠR õigus" active={officer.hasTaserPermission} />
       </div>
 
       <div>
-        <div style={sectionTitleStyle}>Destination type</div>
+        <div style={sectionTitleStyle}>Sihtkoha tüüp</div>
         <div style={destinationTabsStyle}>
           {(['building', 'incident', 'bus', 'pool'] as DestinationType[]).map((type) => (
             <button
@@ -72,14 +81,14 @@ export const OfficerDetailPanel: React.FC<Props> = ({
               disabled={destinationCount[type] === 0}
               style={destinationTabStyle(destinationType === type, destinationCount[type] === 0)}
             >
-              {type === 'building' ? 'Building' : type === 'incident' ? 'Incident' : type === 'bus' ? 'Escort bus' : 'Pool'}
+              {type === 'building' ? 'Üksus / hoone' : type === 'incident' ? 'Sündmus' : type === 'bus' ? 'Saatebuss' : 'Valves'}
             </button>
           ))}
         </div>
       </div>
 
       {destinationType === 'building' && (
-        <Section title="Choose building">
+        <Section title="Vali üksus / hoone">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 150, overflowY: 'auto' }}>
             {buildings.filter((building) => !building.isResourcePool).map((building) => (
               <ActionBtn
@@ -95,15 +104,15 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       )}
 
       {destinationType === 'incident' && (
-        <Section title="Choose active incident">
+        <Section title="Vali aktiivne sündmus">
           {activeIncidents.length === 0 ? (
-            <div style={emptyDestinationStyle}>No active incidents</div>
+            <div style={emptyDestinationStyle}>Aktiivseid sündmusi pole</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {activeIncidents.map((incident) => (
                 <ActionBtn
                   key={incident.id}
-                  label={`${incident.title} (${incident.requiredOfficers} needed)`}
+                  label={`${incident.title} (vajalik ${incident.requiredOfficers})`}
                   disabled={officer.currentIncidentId === incident.id}
                   onClick={() => onAssignToIncident(incident.id)}
                   accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
@@ -115,7 +124,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       )}
 
       {destinationType === 'bus' && (
-        <Section title="Choose escort bus">
+        <Section title="Vali saatebuss">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {buses.map((bus) => (
               <ActionBtn
@@ -131,7 +140,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       )}
 
       {destinationType === 'pool' && pool && (
-        <Section title="Available resource pool">
+        <Section title="Valves olevad ametnikud">
           <ActionBtn
             label={pool.name}
             disabled={officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId}
@@ -141,7 +150,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
         </Section>
       )}
 
-      <button onClick={onRelease} style={releaseStyle}>Return to resource pool</button>
+      <button onClick={onRelease} style={releaseStyle}>Vabasta valves olevate ametnike hulka</button>
     </div>
   );
 };
@@ -155,7 +164,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 const RightBadge: React.FC<{ label: string; active: boolean }> = ({ label, active }) => (
   <div style={{ ...badgeStyle, color: active ? 'var(--green)' : 'var(--text-muted)', borderColor: active ? 'var(--green-dim)' : 'var(--border)' }}>
-    {active ? 'yes' : 'no'} {label}
+    {active ? 'jah' : 'ei'} {label}
   </div>
 );
 

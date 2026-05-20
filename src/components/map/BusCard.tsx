@@ -19,17 +19,17 @@ export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onCli
   return (
     <div onClick={onClick} style={cardStyle(index, selected, hasWarning, ready)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 16 }}>BUS</span>
+        <span style={{ fontSize: 16 }}>BUSS</span>
         <span style={{ ...nameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{bus.name}</span>
       </div>
 
       <div style={countRowStyle}>
         <span style={{ ...countStyle, color: hasWarning ? 'var(--amber)' : ready ? 'var(--green)' : 'var(--text-secondary)' }}>{assigned.length}</span>
-        <span style={metaStyle}>escort {escortQualified}/{bus.minimumEscortQualified}</span>
+        <span style={metaStyle}>saateõigus {escortQualified}/{bus.minimumEscortQualified}</span>
       </div>
 
       <div style={{ ...statusStyle, color: hasWarning ? 'var(--amber)' : ready ? 'var(--green)' : 'var(--text-muted)' }}>
-        {assigned.length === 0 ? 'Empty' : hasWarning ? 'Needs escort-qualified officers' : ready ? 'Ready' : 'Waiting'}
+        {assigned.length === 0 ? 'Tühi' : hasWarning ? 'Vajab saateõigusega ametnikke' : ready ? 'Valmis' : 'Ootel'}
       </div>
 
       {assigned.length > 0 && (

@@ -14,11 +14,11 @@ export type SnapshotLoadResult = {
 const supabaseUrl = cleanEnvValue(import.meta.env.VITE_SUPABASE_URL)?.replace(/\/$/, '');
 const supabaseKey = cleanEnvValue(import.meta.env.VITE_SUPABASE_ANON_KEY);
 const unsafeKeyReason = supabaseKey && looksLikeServiceRoleKey(supabaseKey)
-  ? 'Refusing to use a service_role key in browser code. Use the Supabase anon public key.'
+  ? 'Brauserirakenduses ei kasutata service_role võtit. Kasuta Supabase anon avalikku võtit.'
   : undefined;
 
 export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseKey && !unsafeKeyReason);
-export const syncModeLabel = hasSupabaseConfig ? 'Supabase sync enabled' : 'Local demo mode';
+export const syncModeLabel = hasSupabaseConfig ? 'Supabase sünkroonimine sees' : 'Kohalik demorežiim';
 export const supabaseConfigWarning = unsafeKeyReason;
 
 function cleanEnvValue(value: unknown): string | undefined {
@@ -178,7 +178,7 @@ export async function getSimulationByJoinCode(joinCode: string): Promise<Snapsho
         return { snapshot: remote, mode: 'supabase' };
       }
     } catch {
-      message = 'Supabase connection failed, using local mode';
+      message = 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku režiimi';
     }
   }
 
@@ -254,5 +254,5 @@ async function describeSupabaseError(response: Response, operation: string): Pro
   }
 
   const suffix = detail ? `: ${detail}` : '';
-  return `Supabase ${operation} failed (${response.status})${suffix}`;
+  return `Supabase toiming ebaõnnestus (${operation}, ${response.status})${suffix}`;
 }
