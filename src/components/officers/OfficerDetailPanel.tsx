@@ -150,6 +150,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                   disabled={officer.currentIncidentId === incident.id}
                   onClick={() => assignToIncident(incident.id)}
                   accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
+                  actionLabel="Määra sündmusele"
                 />
               ))}
             </div>
@@ -167,6 +168,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                 disabled={officer.currentBusId === bus.id}
                 onClick={() => assignToBus(bus.id)}
                 accent="var(--amber)"
+                actionLabel="Määra saatebussile"
               />
             ))}
           </div>
@@ -180,11 +182,12 @@ export const OfficerDetailPanel: React.FC<Props> = ({
             disabled={officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId}
             onClick={() => moveToBuilding(pool.id)}
             accent="var(--green)"
+            actionLabel="Suuna"
           />
         </Section>
       )}
 
-      <button onClick={releaseToPool} style={releaseStyle}>Vabasta valves olevate ametnike hulka</button>
+      <button onClick={releaseToPool} style={releaseStyle}>Vabasta / suuna tagasi</button>
     </div>
   );
 };
@@ -202,11 +205,12 @@ const RightBadge: React.FC<{ label: string; active: boolean }> = ({ label, activ
   </div>
 );
 
-const ActionBtn: React.FC<{ label: string; disabled: boolean; onClick: () => void; accent?: string }> = ({
+const ActionBtn: React.FC<{ label: string; disabled: boolean; onClick: () => void; accent?: string; actionLabel?: string }> = ({
   label,
   disabled,
   onClick,
   accent = 'var(--cyan)',
+  actionLabel = 'Suuna',
 }) => (
   <button
     onClick={onClick}
@@ -223,7 +227,8 @@ const ActionBtn: React.FC<{ label: string; disabled: boolean; onClick: () => voi
       opacity: disabled ? 0.5 : 1,
     }}
   >
-    {label}
+    <span>{label}</span>
+    <span style={actionSuffixStyle}>{actionLabel}</span>
   </button>
 );
 
@@ -308,6 +313,16 @@ const emptyDestinationStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-muted)',
   fontSize: 11,
+};
+
+const actionSuffixStyle: React.CSSProperties = {
+  display: 'block',
+  marginTop: 2,
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  color: 'inherit',
+  opacity: 0.8,
+  textTransform: 'uppercase',
 };
 
 const badgeStyle: React.CSSProperties = {

@@ -22,6 +22,7 @@ export const Header: React.FC<Props> = ({
   onStart,
   onReset,
 }) => {
+  const isFacilitator = role === 'facilitator';
   const joinUrl = `${window.location.origin}${window.location.pathname}?join=${simulation.joinCode}&role=student`;
   const syncLabel =
     syncStatus === 'supabase'
@@ -43,14 +44,16 @@ export const Header: React.FC<Props> = ({
         <div style={metaStyle}>{statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}</div>
       </div>
 
-      <div style={joinCodeStyle}>
-        <span>Simulatsiooni kood</span>
-        <strong>{simulation.joinCode}</strong>
-      </div>
+      {isFacilitator && (
+        <div style={joinCodeStyle}>
+          <span>Simulatsiooni kood</span>
+          <strong>{simulation.joinCode}</strong>
+        </div>
+      )}
 
       <div style={roleStyle(role)}>{role === 'facilitator' ? 'Õppejõud / läbiviija' : 'Korrapidaja / juht'}</div>
 
-      <input value={joinUrl} readOnly title="Korrapidaja liitumislink" style={joinLinkStyle} />
+      {isFacilitator && <input value={joinUrl} readOnly title="Korrapidaja liitumislink" style={joinLinkStyle} />}
 
       <div style={{ flex: 1 }} />
 

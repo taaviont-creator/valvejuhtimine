@@ -64,6 +64,47 @@ export const RightSidebar: React.FC<Props> = ({
     if (confirmed) onCloseIncident(incident.id);
   };
 
+  if (!isFacilitator) {
+    return (
+      <div style={sidebarStyle}>
+        <div style={studentHeaderStyle}>
+          <div style={panelLabelStyle}>Korrapidaja töölaud</div>
+          <div style={studentSummaryStyle}>
+            <span>Aktiivsed sündmused: <strong>{activeIncidents.length}</strong></span>
+            <span>Hoiatused: <strong>{warnings.length}</strong></span>
+          </div>
+        </div>
+
+        <div style={studentContentStyle}>
+          <StudentSection title="Aktiivsed sündmused" count={activeIncidents.length}>
+            {activeIncidents.length === 0 ? (
+              <div style={emptyStyle}>Aktiivseid sündmusi pole</div>
+            ) : (
+              activeIncidents.map((incident) => (
+                <IncidentCard
+                  key={incident.id}
+                  incident={incident}
+                  officers={officers}
+                  buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
+                  isFacilitator={false}
+                  onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
+                />
+              ))
+            )}
+          </StudentSection>
+
+          <StudentSection title="Hoiatused" count={warnings.length} prominent={warnings.length > 0}>
+            <WarningList warnings={warnings} />
+          </StudentSection>
+
+          <StudentSection title="Otsuste logi" count={Math.min(decisionLog.length, 8)}>
+            <DecisionLog entries={decisionLog.slice(0, 8)} />
+          </StudentSection>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={sidebarStyle}>
       <div style={statusPanelStyle}>
@@ -156,6 +197,21 @@ export const RightSidebar: React.FC<Props> = ({
   );
 };
 
+const StudentSection: React.FC<{ title: string; count: number; prominent?: boolean; children: React.ReactNode }> = ({
+  title,
+  count,
+  prominent = false,
+  children,
+}) => (
+  <section style={studentSectionStyle(prominent)}>
+    <div style={studentSectionTitleStyle}>
+      <span>{title}</span>
+      <strong>{count}</strong>
+    </div>
+    {children}
+  </section>
+);
+
 const sidebarStyle: React.CSSProperties = {
   width: 280,
   display: 'flex',
@@ -173,6 +229,25 @@ const statusPanelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
+};
+
+const studentHeaderStyle: React.CSSProperties = {
+  padding: 10,
+  borderBottom: '1px solid var(--border)',
+  background: 'var(--bg-panel)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 7,
+};
+
+const studentSummaryStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 6,
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
 };
 
 const panelLabelStyle: React.CSSProperties = {
@@ -235,6 +310,37 @@ const contentStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 5,
+};
+
+const studentContentStyle: React.CSSProperties = {
+  flex: 1,
+  overflowY: 'auto',
+  padding: 8,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+};
+
+const studentSectionStyle = (prominent: boolean): React.CSSProperties => ({
+  border: `1px solid ${prominent ? 'rgba(255,51,85,0.45)' : 'var(--border)'}`,
+  borderLeft: `3px solid ${prominent ? 'var(--red)' : 'var(--cyan-dim)'}`,
+  borderRadius: 'var(--radius-sm)',
+  background: prominent ? 'rgba(255,51,85,0.045)' : 'rgba(255,255,255,0.012)',
+  padding: 7,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+});
+
+const studentSectionTitleStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  letterSpacing: 1,
+  textTransform: 'uppercase',
 };
 
 const emptyStyle: React.CSSProperties = {
