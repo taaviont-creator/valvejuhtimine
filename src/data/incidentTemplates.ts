@@ -78,6 +78,7 @@ export interface EscalationTemplate {
   id: string;
   text: string;
   requiredOfficers?: number;
+  requiredOfficerDelta?: number;
   requiresEscortPermission?: boolean;
   requiresTaserPermission?: boolean;
   externalEscortRequired?: boolean;
@@ -86,13 +87,30 @@ export interface EscalationTemplate {
 
 export const ESCALATION_TEMPLATES: EscalationTemplate[] = [
   {
-    id: 'more-resources',
-    text: 'Olukord eskaleerus — vaja lisaressurssi.',
+    id: 'officer-injured',
+    text: 'Ametnik vigastatud.',
     severity: 'critical',
   },
   {
+    id: 'more-resources',
+    text: 'Vaja lisaressurssi.',
+    requiredOfficerDelta: 1,
+    severity: 'high',
+  },
+  {
+    id: 'out-of-control',
+    text: 'Sündmus kontrolli alt väljas.',
+    requiredOfficerDelta: 2,
+    severity: 'critical',
+  },
+  {
+    id: 'needs-senior-guard',
+    text: 'Vajalik vanemvalvur sündmusele.',
+    severity: 'high',
+  },
+  {
     id: 'urgent-escort',
-    text: 'Vajalik erakorraline väljaviimine — vaja 2 saateõigusega ametnikku.',
+    text: 'Vajalik 2 saateõigusega ametnikku.',
     requiredOfficers: 2,
     requiresEscortPermission: true,
     externalEscortRequired: true,

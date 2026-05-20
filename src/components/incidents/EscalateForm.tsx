@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ESCALATION_TEMPLATES, EscalationTemplate } from '../../data/incidentTemplates';
-import { Incident, IncidentSeverity } from '../../models';
+import { Incident, IncidentSeverity, Officer } from '../../models';
 
 interface Props {
   incident: Incident;
@@ -12,10 +12,12 @@ interface Props {
     requiresTaser: boolean,
     externalEscortRequired: boolean
   ) => void;
+  assignedOfficers: Officer[];
+  onMarkOfficerInjured: (officerId: string) => void;
   onCancel: () => void;
 }
 
-export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) => {
+export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSubmit, onMarkOfficerInjured, onCancel }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [text, setText] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>(incident.severity);
@@ -23,16 +25,18 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
   const [requiresEscort, setRequiresEscort] = useState(incident.requiresEscortPermission);
   const [requiresTaser, setRequiresTaser] = useState(incident.requiresTaserPermission);
   const [externalEscortRequired, setExternalEscortRequired] = useState(incident.externalEscortRequired);
+  const [injuredOfficerId, setInjuredOfficerId] = useState(assignedOfficers[0]?.id ?? '');
 
   const applyTemplate = (template: EscalationTemplate) => {
     setSelectedTemplateId(template.id);
     setText(template.text);
     setSeverity(template.severity ?? severity);
-    setRequiredOfficers(template.requiredOfficers ?? requiredOfficers);
+    setRequiredOfficers(Math.max(template.requiredOfficers ?? requiredOfficers, requiredOfficers + (template.requiredOfficerDelta ?? 0)));
     setRequiresEscort(template.requiresEscortPermission ?? requiresEscort);
     setRequiresTaser(template.requiresTaserPermission ?? requiresTaser);
     setExternalEscortRequired(template.externalEscortRequired ?? externalEscortRequired);
   };
+  const selectedInjuredOfficer = assignedOfficers.find((officer) => officer.id === injuredOfficerId);
 
   return (
     <div style={overlayStyle}>
@@ -50,6 +54,31 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
               {template.text}
             </button>
           ))}
+        </div>
+
+        <div style={injuryPanelStyle}>
+          <div style={labelStyle}>Ametnik vigastatud</div>
+          {assignedOfficers.length === 0 ? (
+            <div style={emptyInjuryStyle}>Sündmusele pole ametnikke määratud</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <select value={injuredOfficerId} onChange={(event) => setInjuredOfficerId(event.target.value)} style={inputStyle}>
+                {assignedOfficers.map((officer) => (
+                  <option key={officer.id} value={officer.id}>
+                    {officer.name} - {officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => selectedInjuredOfficer && onMarkOfficerInjured(selectedInjuredOfficer.id)}
+                disabled={!selectedInjuredOfficer}
+                style={{ ...injuryButtonStyle, opacity: selectedInjuredOfficer ? 1 : 0.45 }}
+              >
+                Märgi ametnik vigastatuks
+              </button>
+            </div>
+          )}
+          <div style={injuryHintStyle}>Vigastatud ametnik eemaldatakse sündmuselt ja jääb olekusse Mängust väljas.</div>
         </div>
 
         <label style={labelStyle}>Olukorra muutus / kommentaar</label>
@@ -159,6 +188,36 @@ const templateButtonStyle = (active: boolean): React.CSSProperties => ({
   fontSize: 11,
   lineHeight: 1.25,
 });
+
+const injuryPanelStyle: React.CSSProperties = {
+  marginBottom: 14,
+  padding: 10,
+  background: 'rgba(255,51,85,0.07)',
+  border: '1px solid rgba(255,51,85,0.35)',
+  borderRadius: 'var(--radius-sm)',
+};
+
+const injuryButtonStyle: React.CSSProperties = {
+  padding: '8px 10px',
+  background: 'var(--red)',
+  border: 'none',
+  borderRadius: 'var(--radius-sm)',
+  color: '#fff',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const injuryHintStyle: React.CSSProperties = {
+  marginTop: 7,
+  color: 'var(--text-muted)',
+  fontSize: 11,
+};
+
+const emptyInjuryStyle: React.CSSProperties = {
+  color: 'var(--text-muted)',
+  fontSize: 12,
+};
 
 const labelStyle: React.CSSProperties = {
   display: 'block',

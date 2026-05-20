@@ -34,7 +34,11 @@ export const App: React.FC = () => {
   const confirmReassignment = (officerId: string) => {
     const officer = state.officers.find((item) => item.id === officerId);
     if (!officer) return false;
-    const occupied = Boolean(officer.currentIncidentId || officer.currentBusId || officer.status === 'busy' || officer.status === 'unavailable');
+    if (officer.status === 'unavailable') {
+      window.alert('Ametnik on mängust väljas ja teda ei saa suunata.');
+      return false;
+    }
+    const occupied = Boolean(officer.currentIncidentId || officer.currentBusId || officer.status === 'busy');
     return !occupied || window.confirm('Ametnik on juba hõivatud. Kas vabastada ta praeguselt ülesandelt ja suunata uude kohta?');
   };
   const moveDroppedOfficerToBuilding = (officerId: string, buildingId: string) => {
@@ -134,11 +138,17 @@ export const App: React.FC = () => {
       {escalateIncidentId && (() => {
         const incident = state.incidents.find((item) => item.id === escalateIncidentId);
         if (!incident) return null;
+        const assignedOfficers = state.officers.filter((officer) => officer.currentIncidentId === incident.id);
         return (
           <EscalateForm
             incident={incident}
+            assignedOfficers={assignedOfficers}
             onSubmit={(text, severity, required, escort, taser, externalEscort) => {
               sim.escalateIncident(escalateIncidentId, text, severity, required, escort, taser, externalEscort);
+              setEscalateIncidentId(null);
+            }}
+            onMarkOfficerInjured={(officerId) => {
+              sim.markOfficerInjured(escalateIncidentId, officerId);
               setEscalateIncidentId(null);
             }}
             onCancel={() => setEscalateIncidentId(null)}

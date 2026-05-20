@@ -33,6 +33,12 @@ export const BuildingCard: React.FC<Props> = ({
       officer.currentBusId === null &&
       officer.status !== 'unavailable'
   );
+  const unavailableOfficers = officers.filter(
+    (officer) =>
+      officer.status === 'unavailable' &&
+      !building.isResourcePool &&
+      (officer.homeBuildingId === building.id || officer.currentBuildingId === building.id)
+  );
   const officerCount = getBuildingOfficerCount(building, officers);
   const belowMin = !building.isResourcePool && officerCount < building.minimumStaff;
   const critical = belowMin && activeIncidents.length > 0;
@@ -124,6 +130,17 @@ export const BuildingCard: React.FC<Props> = ({
         </div>
       )}
 
+      {unavailableOfficers.length > 0 && (
+        <div style={unavailableOfficerSectionStyle}>
+          <div style={sectionLabelStyle}>Mängust väljas</div>
+          <div style={chipWrapStyle}>
+            {unavailableOfficers.map((officer) => (
+              <OfficerMapChip key={officer.id} officer={officer} tone="unavailable" />
+            ))}
+          </div>
+        </div>
+      )}
+
       {isFacilitator && !building.isResourcePool && (
         <button
           onClick={(event) => {
@@ -139,7 +156,7 @@ export const BuildingCard: React.FC<Props> = ({
   );
 };
 
-const OfficerMapChip: React.FC<{ officer: Officer; tone: 'free' | 'incident'; incidentTitle?: string }> = ({ officer, tone, incidentTitle }) => {
+const OfficerMapChip: React.FC<{ officer: Officer; tone: 'free' | 'incident' | 'unavailable'; incidentTitle?: string }> = ({ officer, tone, incidentTitle }) => {
   const isLead = officer.role === 'vanemvalvur';
   return (
     <span
@@ -269,6 +286,14 @@ const freeOfficerSectionStyle: React.CSSProperties = {
   marginTop: 7,
   paddingTop: 6,
   borderTop: '1px solid var(--border)',
+};
+
+const unavailableOfficerSectionStyle: React.CSSProperties = {
+  marginTop: 7,
+  padding: '6px 7px',
+  background: 'rgba(255,51,85,0.06)',
+  border: '1px solid rgba(255,51,85,0.35)',
+  borderRadius: 'var(--radius-sm)',
 };
 
 const sectionLabelStyle: React.CSSProperties = {

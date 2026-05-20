@@ -14,6 +14,7 @@ const statusLabels: Record<Officer['status'], string> = {
 
 const reassignmentMessage = 'Ametnik on juba hõivatud. Kas vabastada ta praeguselt ülesandelt ja suunata uude kohta?';
 const escortPermissionMessage = 'Ametnikul puudub saateõigus. Saatebussi saab määrata ainult saateõigusega ametniku.';
+const unavailableMessage = 'Ametnik on mängust väljas ja teda ei saa suunata.';
 
 interface Props {
   officer: Officer;
@@ -53,7 +54,13 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       officer.status === 'unavailable'
   );
 
-  const confirmReassignment = () => !isOccupied || window.confirm(reassignmentMessage);
+  const confirmReassignment = () => {
+    if (officer.status === 'unavailable') {
+      window.alert(unavailableMessage);
+      return false;
+    }
+    return !isOccupied || window.confirm(reassignmentMessage);
+  };
   const moveToBuilding = (buildingId: string) => {
     if (confirmReassignment()) onMoveToBuilding(buildingId);
   };

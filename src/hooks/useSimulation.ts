@@ -69,6 +69,10 @@ function assignmentLog(officer: Officer, state: AppState, targetLabel: string, f
     : fallback;
 }
 
+function unavailableWarning(officer: Officer) {
+  return `Hoiatus tekkis: ametnik ${officer.name} on mängust väljas ja teda ei saa suunata.`;
+}
+
 function emptyState(): AppState {
   return {
     role: null,
@@ -401,6 +405,9 @@ export function useSimulation() {
         const officer = current.officers.find((item) => item.id === officerId);
         const building = current.buildings.find((item) => item.id === buildingId);
         if (!officer || !building) return current;
+        if (officer.status === 'unavailable') {
+          return appendLog(current, 'system', unavailableWarning(officer));
+        }
 
         const officers = current.officers.map((item) =>
           item.id === officerId
@@ -436,6 +443,9 @@ export function useSimulation() {
         const officer = current.officers.find((item) => item.id === officerId);
         const incident = current.incidents.find((item) => item.id === incidentId && item.status !== 'closed');
         if (!officer || !incident) return current;
+        if (officer.status === 'unavailable') {
+          return appendLog(current, 'system', unavailableWarning(officer));
+        }
 
         const officers = current.officers.map((item) =>
           item.id === officerId
@@ -466,6 +476,9 @@ export function useSimulation() {
         const officer = current.officers.find((item) => item.id === officerId);
         const bus = current.buses.find((item) => item.id === busId);
         if (!officer || !bus) return current;
+        if (officer.status === 'unavailable') {
+          return appendLog(current, 'system', unavailableWarning(officer));
+        }
         if (!officer.hasEscortPermission) {
           return appendLog(
             current,
@@ -578,6 +591,48 @@ export function useSimulation() {
     [commit]
   );
 
+  const markOfficerInjured = useCallback(
+    (incidentId: string, officerId: string) => {
+      commit((current) => {
+        if (!current.simulation) return current;
+        const incident = current.incidents.find((item) => item.id === incidentId && item.status !== 'closed');
+        const officer = current.officers.find((item) => item.id === officerId && item.currentIncidentId === incidentId);
+        if (!incident || !officer) return current;
+
+        const text = `Olukord eskaleerus: ametnik ${officer.name} sai vigastada ja on mängust väljas.`;
+        const update: IncidentUpdate = { id: uuidv4(), incidentId, text, createdAt: now() };
+        const incidents = current.incidents.map((item) =>
+          item.id === incidentId
+            ? {
+                ...item,
+                status: 'escalated' as const,
+                severity: item.severity === 'critical' ? item.severity : ('high' as const),
+                updates: [...item.updates, update],
+              }
+            : item
+        );
+        const officers = current.officers.map((item) =>
+          item.id === officerId
+            ? {
+                ...item,
+                currentBuildingId: null,
+                currentIncidentId: null,
+                currentBusId: null,
+                status: 'unavailable' as const,
+              }
+            : item
+        );
+
+        return appendLog(
+          { ...current, incidents, officers },
+          'teacher',
+          `Õppejõud märkis ametniku ${officer.name} vigastatuks sündmusel: ${incident.title}. Ametnik eemaldati sündmuselt ja on mängust väljas.`
+        );
+      });
+    },
+    [commit]
+  );
+
   const closeIncident = useCallback(
     (incidentId: string) => {
       commit((current) => {
@@ -684,6 +739,7 @@ export function useSimulation() {
     releaseOfficer,
     createIncident,
     escalateIncident,
+    markOfficerInjured,
     closeIncident,
     updateBuildingMinimum,
     addOfficer,

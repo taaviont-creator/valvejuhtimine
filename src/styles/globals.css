@@ -136,6 +136,12 @@ input, select, textarea {
   color: #ff99cc;
 }
 
+.officer-chip--unavailable {
+  background: rgba(255, 51, 85, 0.12);
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+
 .role-badge {
   display: inline-flex;
   align-items: center;

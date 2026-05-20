@@ -16,7 +16,7 @@ const statusColors: Record<string, string> = {
   on_incident: 'var(--amber)',
   on_escort: '#ff99cc',
   busy: 'var(--amber)',
-  unavailable: 'var(--text-muted)',
+  unavailable: 'var(--red)',
 };
 
 const statusBackgrounds: Record<string, string> = {
@@ -25,7 +25,7 @@ const statusBackgrounds: Record<string, string> = {
   on_incident: 'rgba(255,170,0,0.13)',
   on_escort: 'rgba(255,153,204,0.13)',
   busy: 'rgba(255,170,0,0.13)',
-  unavailable: 'rgba(74,96,128,0.13)',
+  unavailable: 'rgba(255,51,85,0.12)',
 };
 
 const statusLabels: Record<string, string> = {

@@ -69,7 +69,7 @@ export const LeftSidebar: React.FC<Props> = ({
                   officer={officer}
                   selected={selectedOfficerId === officer.id}
                   onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
-                  buildingName={officer.currentBuildingId ? buildings.find((building) => building.id === officer.currentBuildingId)?.name : undefined}
+                  buildingName={buildingLabel(officer, buildings)}
                   incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
                   busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
                 />
@@ -81,7 +81,7 @@ export const LeftSidebar: React.FC<Props> = ({
                   officer={officer}
                   selected={selectedOfficerId === officer.id}
                   onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
-                  buildingName={officer.currentBuildingId ? buildings.find((building) => building.id === officer.currentBuildingId)?.name : undefined}
+                  buildingName={buildingLabel(officer, buildings)}
                   incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
                   busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
                 />
@@ -208,6 +208,11 @@ const TeacherSetup: React.FC<{
 
 function officerGroupId(officer: Officer) {
   return officer.homeBuildingId ?? officer.currentBuildingId ?? officer.currentBusId ?? 'other';
+}
+
+function buildingLabel(officer: Officer, buildings: Building[]) {
+  const buildingId = officer.currentBuildingId ?? officer.homeBuildingId;
+  return buildingId ? buildings.find((building) => building.id === buildingId)?.name : undefined;
 }
 
 function dragOfficer(event: React.DragEvent, officerId: string) {
