@@ -31,6 +31,27 @@ export const App: React.FC = () => {
   }
 
   const isFacilitator = state.role === 'facilitator';
+  const confirmReassignment = (officerId: string) => {
+    const officer = state.officers.find((item) => item.id === officerId);
+    if (!officer) return false;
+    const occupied = Boolean(officer.currentIncidentId || officer.currentBusId || officer.status === 'busy' || officer.status === 'unavailable');
+    return !occupied || window.confirm('Ametnik on juba hõivatud. Kas vabastada ta praeguselt ülesandelt ja suunata uude kohta?');
+  };
+  const moveDroppedOfficerToBuilding = (officerId: string, buildingId: string) => {
+    if (confirmReassignment(officerId)) sim.moveOfficerToBuilding(officerId, buildingId);
+  };
+  const assignDroppedOfficerToIncident = (officerId: string, incidentId: string) => {
+    if (confirmReassignment(officerId)) sim.assignOfficerToIncident(officerId, incidentId);
+  };
+  const assignDroppedOfficerToBus = (officerId: string, busId: string) => {
+    const officer = state.officers.find((item) => item.id === officerId);
+    if (!officer) return;
+    if (!officer.hasEscortPermission) {
+      window.alert('Ametnikul puudub saateõigus. Saatebussi saab määrata ainult saateõigusega ametniku.');
+      return;
+    }
+    if (confirmReassignment(officerId)) sim.assignOfficerToBus(officerId, busId);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -76,6 +97,8 @@ export const App: React.FC = () => {
             onSelectBus={setSelectedBusId}
             isFacilitator={isFacilitator}
             onCreateIncident={(buildingId) => setIncidentFormBuildingId(buildingId)}
+            onOfficerDropToBuilding={moveDroppedOfficerToBuilding}
+            onOfficerDropToBus={assignDroppedOfficerToBus}
           />
         </div>
 
@@ -92,6 +115,7 @@ export const App: React.FC = () => {
           }}
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
+          onOfficerDropToIncident={assignDroppedOfficerToIncident}
         />
       </div>
 

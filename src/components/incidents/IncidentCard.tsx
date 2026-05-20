@@ -30,6 +30,7 @@ interface Props {
   isFacilitator: boolean;
   onEscalate?: () => void;
   onClose?: () => void;
+  onOfficerDrop?: (officerId: string) => void;
 }
 
 export const IncidentCard: React.FC<Props> = ({
@@ -39,6 +40,7 @@ export const IncidentCard: React.FC<Props> = ({
   isFacilitator,
   onEscalate,
   onClose,
+  onOfficerDrop,
 }) => {
   const [expanded, setExpanded] = React.useState(false);
   const assigned = getIncidentOfficers(incident, officers);
@@ -46,12 +48,19 @@ export const IncidentCard: React.FC<Props> = ({
   const escortCount = assigned.filter((officer) => officer.hasEscortPermission).length;
   const taserCount = assigned.filter((officer) => officer.hasTaserPermission).length;
   const latestUpdate = incident.updates[incident.updates.length - 1];
+  const unmetRequirement = assigned.length < incident.requiredOfficers;
+  const dropOfficer = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const officerId = event.dataTransfer.getData('text/plain');
+    if (officerId) onOfficerDrop?.(officerId);
+  };
 
   return (
-    <div style={cardStyle(incident, color)}>
+    <div onDragOver={(event) => event.preventDefault()} onDrop={dropOfficer} style={cardStyle(incident, color)}>
       <div style={{ cursor: 'pointer' }} onClick={() => setExpanded((value) => !value)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-          <div style={titleTextStyle(incident.status === 'closed')}>{incident.title}</div>
+          <div style={titleTextStyle(incident.status === 'closed')}>Sündmus: {incident.title}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
             <span style={{ ...statusStyle, color: incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--text-muted)' : color }}>
               {statusLabels[incident.status]}
@@ -60,7 +69,7 @@ export const IncidentCard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div style={locationStyle}>{buildingName}</div>
+        <div style={locationStyle}>Asukoht: {buildingName}</div>
 
         <div style={{ display: 'flex', gap: 5, marginTop: 7, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ ...resourceStyle, color: assigned.length >= incident.requiredOfficers ? 'var(--green)' : 'var(--red)' }}>
@@ -71,9 +80,39 @@ export const IncidentCard: React.FC<Props> = ({
           {incident.externalEscortRequired && <Tag color="#ff99cc" text="Väljaviimine" />}
         </div>
 
+        <div style={assignedSummaryStyle}>
+          <span style={miniLabelStyle}>Määratud ametnikud</span>
+          {assigned.length === 0 ? (
+            <div style={emptyStyle}>Ametnikke pole määratud</div>
+          ) : (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+              {assigned.map((officer) => (
+                <span
+                  key={officer.id}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData('text/plain', officer.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                  }}
+                  title={officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}
+                  className="officer-chip officer-chip--incident"
+                >
+                  {officer.name}
+                  <span className={`role-badge ${officer.role === 'vanemvalvur' ? 'role-badge--lead' : 'role-badge--guard'}`}>
+                    {officer.role === 'vanemvalvur' ? 'VV' : 'V'}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+          {unmetRequirement && (
+            <div style={requirementWarningStyle}>Vajalik nõue täitmata: {assigned.length}/{incident.requiredOfficers} ametnikku</div>
+          )}
+        </div>
+
         {latestUpdate && (
           <div style={latestUpdateStyle}>
-            Viimane olukorra muutus: {latestUpdate.text}
+            Viimane muutus: {latestUpdate.text}
           </div>
         )}
       </div>
@@ -90,18 +129,6 @@ export const IncidentCard: React.FC<Props> = ({
             </div>
           )}
 
-          <div style={{ marginBottom: 8 }}>
-            <div style={miniLabelStyle}>Määratud ametnikud</div>
-            {assigned.length === 0 ? (
-              <div style={emptyStyle}>Ametnikke pole määratud</div>
-            ) : (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {assigned.map((officer) => (
-                  <span key={officer.id} style={officerChipStyle}>{officer.name}</span>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -192,6 +219,21 @@ const updateStyle: React.CSSProperties = {
   marginBottom: 3,
 };
 
+const assignedSummaryStyle: React.CSSProperties = {
+  marginTop: 8,
+  padding: '6px 7px',
+  background: 'rgba(0,212,255,0.04)',
+  border: '1px solid rgba(0,212,255,0.16)',
+  borderRadius: 'var(--radius-sm)',
+};
+
+const requirementWarningStyle: React.CSSProperties = {
+  marginTop: 5,
+  color: 'var(--red)',
+  fontSize: 11,
+  fontFamily: 'var(--font-mono)',
+};
+
 const latestUpdateStyle: React.CSSProperties = {
   marginTop: 7,
   padding: '5px 7px',
@@ -215,16 +257,6 @@ const miniLabelStyle: React.CSSProperties = {
 const emptyStyle: React.CSSProperties = {
   color: 'var(--red)',
   fontSize: 11,
-};
-
-const officerChipStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  padding: '1px 5px',
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border)',
-  color: 'var(--cyan)',
-  borderRadius: 3,
 };
 
 const actionButtonStyle: React.CSSProperties = {

@@ -99,3 +99,65 @@ input, select, textarea {
   to { opacity: 1; transform: translateY(0); }
 }
 .fade-in { animation: fadeIn 0.2s ease; }
+
+.officer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 18px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: grab;
+}
+
+.officer-chip:active {
+  cursor: grabbing;
+}
+
+.officer-chip--free {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid var(--cyan-dim);
+  color: var(--cyan);
+}
+
+.officer-chip--incident {
+  background: rgba(255, 170, 0, 0.12);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+}
+
+.officer-chip--escort {
+  background: rgba(255, 153, 204, 0.12);
+  border: 1px solid #ff99cc;
+  color: #ff99cc;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.role-badge--lead {
+  background: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  color: var(--bg-base);
+}
+
+.role-badge--guard {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-secondary);
+}

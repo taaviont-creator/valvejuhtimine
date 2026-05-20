@@ -73,18 +73,18 @@ export function createDefaultOfficers(simulationId: string, placeInPool: boolean
   ];
 
   const officers: Array<Omit<Officer, 'simulationId' | 'status' | 'homeBuildingId' | 'currentBuildingId' | 'currentIncidentId' | 'currentBusId'>> = [
-    { id: 'A1', name: 'A1', gender: 'male', hasEscortPermission: true, hasTaserPermission: true },
-    { id: 'A2', name: 'A2', gender: 'male', hasEscortPermission: false, hasTaserPermission: false },
-    { id: 'A3', name: 'A3', gender: 'female', hasEscortPermission: true, hasTaserPermission: false },
-    { id: 'B1', name: 'B1', gender: 'male', hasEscortPermission: true, hasTaserPermission: true },
-    { id: 'B2', name: 'B2', gender: 'female', hasEscortPermission: false, hasTaserPermission: false },
-    { id: 'C1', name: 'C1', gender: 'male', hasEscortPermission: true, hasTaserPermission: false },
-    { id: 'C2', name: 'C2', gender: 'female', hasEscortPermission: false, hasTaserPermission: true },
-    { id: 'D1', name: 'D1', gender: 'male', hasEscortPermission: true, hasTaserPermission: true },
-    { id: 'D2', name: 'D2', gender: 'female', hasEscortPermission: false, hasTaserPermission: false },
-    { id: 'E1', name: 'E1', gender: 'male', hasEscortPermission: true, hasTaserPermission: false },
-    { id: 'E2', name: 'E2', gender: 'female', hasEscortPermission: false, hasTaserPermission: false },
-    { id: 'F1', name: 'F1', gender: 'male', hasEscortPermission: true, hasTaserPermission: true },
+    { id: 'A1', name: 'A1', gender: 'male', role: 'vanemvalvur', hasEscortPermission: true, hasTaserPermission: true },
+    { id: 'A2', name: 'A2', gender: 'male', role: 'valvur', hasEscortPermission: false, hasTaserPermission: false },
+    { id: 'A3', name: 'A3', gender: 'female', role: 'vanemvalvur', hasEscortPermission: true, hasTaserPermission: false },
+    { id: 'B1', name: 'B1', gender: 'male', role: 'valvur', hasEscortPermission: true, hasTaserPermission: true },
+    { id: 'B2', name: 'B2', gender: 'female', role: 'vanemvalvur', hasEscortPermission: false, hasTaserPermission: false },
+    { id: 'C1', name: 'C1', gender: 'male', role: 'valvur', hasEscortPermission: true, hasTaserPermission: false },
+    { id: 'C2', name: 'C2', gender: 'female', role: 'vanemvalvur', hasEscortPermission: false, hasTaserPermission: true },
+    { id: 'D1', name: 'D1', gender: 'male', role: 'vanemvalvur', hasEscortPermission: true, hasTaserPermission: true },
+    { id: 'D2', name: 'D2', gender: 'female', role: 'valvur', hasEscortPermission: false, hasTaserPermission: false },
+    { id: 'E1', name: 'E1', gender: 'male', role: 'vanemvalvur', hasEscortPermission: true, hasTaserPermission: false },
+    { id: 'E2', name: 'E2', gender: 'female', role: 'valvur', hasEscortPermission: false, hasTaserPermission: false },
+    { id: 'F1', name: 'F1', gender: 'male', role: 'vanemvalvur', hasEscortPermission: true, hasTaserPermission: true },
   ];
 
   return officers.map((officer, index) => ({

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppRole, Building, EscortBus, Incident, Officer, OfficerGender, SetupMode, Simulation } from '../../models';
+import { AppRole, Building, EscortBus, Incident, Officer, OfficerGender, OfficerRole, SetupMode, Simulation } from '../../models';
 import { OfficerCard } from '../officers/OfficerCard';
 import { OfficerDetailPanel } from '../officers/OfficerDetailPanel';
 
@@ -16,7 +16,7 @@ interface Props {
   onAssignToIncident: (officerId: string, incidentId: string) => void;
   onAssignToBus: (officerId: string, busId: string) => void;
   onRelease: (officerId: string) => void;
-  onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string) => void;
+  onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string, role?: OfficerRole) => void;
   onUpdateBuildingMinimum: (buildingId: string, minimum: number) => void;
   onSetSetupMode: (mode: SetupMode) => void;
 }
@@ -40,27 +40,55 @@ export const LeftSidebar: React.FC<Props> = ({
 }) => {
   const selectedOfficer = officers.find((officer) => officer.id === selectedOfficerId);
   const [setupOpen, setSetupOpen] = useState(role === 'facilitator');
+  const groupIds = [
+    ...buildings.map((building) => building.id),
+    ...buses.map((bus) => bus.id),
+    'other',
+  ];
+  const groupedOfficers = groupIds
+    .map((groupId) => {
+      const label =
+        buildings.find((building) => building.id === groupId)?.name ??
+        buses.find((bus) => bus.id === groupId)?.name ??
+        'Sündmusel / hõivatud';
+      const groupOfficers = officers.filter((officer) => officerGroupId(officer) === groupId);
+      return { groupId, label, officers: groupOfficers };
+    })
+    .filter((group) => group.officers.length > 0);
 
   return (
     <div style={sidebarStyle}>
       <SectionHeader title="Ametnikud" count={officers.length} />
 
       <div style={listStyle}>
-        {(['available', 'in_building', 'on_incident', 'on_escort', 'busy', 'unavailable'] as const).map((status) => {
-          const group = officers.filter((officer) => officer.status === status);
-          if (group.length === 0) return null;
-          return group.map((officer) => (
-            <OfficerCard
-              key={officer.id}
-              officer={officer}
-              selected={selectedOfficerId === officer.id}
-              onClick={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
-              buildingName={officer.currentBuildingId ? buildings.find((building) => building.id === officer.currentBuildingId)?.name : undefined}
-              incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
-              busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
-            />
-          ));
-        })}
+        {groupedOfficers.map((group) => (
+          <OfficerGroup key={group.groupId} title={group.label}>
+            <RoleGroup title="Vanemvalvur" officers={group.officers.filter((officer) => officer.role === 'vanemvalvur')}>
+              {(officer) => (
+                <OfficerRow
+                  officer={officer}
+                  selected={selectedOfficerId === officer.id}
+                  onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
+                  buildingName={officer.currentBuildingId ? buildings.find((building) => building.id === officer.currentBuildingId)?.name : undefined}
+                  incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
+                  busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
+                />
+              )}
+            </RoleGroup>
+            <RoleGroup title="Valvurid" officers={group.officers.filter((officer) => officer.role !== 'vanemvalvur')}>
+              {(officer) => (
+                <OfficerRow
+                  officer={officer}
+                  selected={selectedOfficerId === officer.id}
+                  onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
+                  buildingName={officer.currentBuildingId ? buildings.find((building) => building.id === officer.currentBuildingId)?.name : undefined}
+                  incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
+                  busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
+                />
+              )}
+            </RoleGroup>
+          </OfficerGroup>
+        ))}
       </div>
 
       {selectedOfficer && (
@@ -103,12 +131,13 @@ const TeacherSetup: React.FC<{
   simulation: Simulation;
   buildings: Building[];
   onSetSetupMode: (mode: SetupMode) => void;
-  onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string) => void;
+  onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string, role?: OfficerRole) => void;
   onUpdateBuildingMinimum: (buildingId: string, minimum: number) => void;
 }> = ({ simulation, buildings, onSetSetupMode, onAddOfficer, onUpdateBuildingMinimum }) => {
   const firstBuilding = buildings.find((building) => !building.isResourcePool)?.id;
   const [name, setName] = useState('');
   const [gender, setGender] = useState<OfficerGender>('male');
+  const [officerRole, setOfficerRole] = useState<OfficerRole>('valvur');
   const [escort, setEscort] = useState(false);
   const [taser, setTaser] = useState(false);
   const [buildingId, setBuildingId] = useState(firstBuilding ?? '');
@@ -134,6 +163,12 @@ const TeacherSetup: React.FC<{
           <option value="male">Mees</option>
           <option value="female">Naine</option>
         </select>
+        <select value={officerRole} onChange={(event) => setOfficerRole(event.target.value as OfficerRole)} style={smallInputStyle}>
+          <option value="valvur">Valvur</option>
+          <option value="vanemvalvur">Vanemvalvur</option>
+        </select>
+      </div>
+      <div style={{ marginTop: 5 }}>
         <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={smallInputStyle}>
           {buildings.filter((building) => !building.isResourcePool).map((building) => (
             <option key={building.id} value={building.id}>{building.name}</option>
@@ -145,7 +180,7 @@ const TeacherSetup: React.FC<{
       <button
         style={wideSmallButtonStyle}
         onClick={() => {
-          onAddOfficer(name, gender, escort, taser, buildingId);
+          onAddOfficer(name, gender, escort, taser, buildingId, officerRole);
           setName('');
         }}
       >
@@ -170,6 +205,56 @@ const TeacherSetup: React.FC<{
     </div>
   );
 };
+
+function officerGroupId(officer: Officer) {
+  return officer.homeBuildingId ?? officer.currentBuildingId ?? officer.currentBusId ?? 'other';
+}
+
+function dragOfficer(event: React.DragEvent, officerId: string) {
+  event.dataTransfer.setData('text/plain', officerId);
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+const OfficerGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section style={officerGroupStyle}>
+    <div style={groupTitleStyle}>{title}</div>
+    {children}
+  </section>
+);
+
+const RoleGroup: React.FC<{ title: string; officers: Officer[]; children: (officer: Officer) => React.ReactNode }> = ({ title, officers, children }) => {
+  if (officers.length === 0) return null;
+  return (
+    <div style={roleGroupStyle}>
+      <div style={roleTitleStyle}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {officers.map((officer) => (
+          <React.Fragment key={officer.id}>{children(officer)}</React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const OfficerRow: React.FC<{
+  officer: Officer;
+  selected: boolean;
+  onSelect: () => void;
+  buildingName?: string;
+  incidentTitle?: string;
+  busName?: string;
+}> = ({ officer, selected, onSelect, buildingName, incidentTitle, busName }) => (
+  <div draggable onDragStart={(event) => dragOfficer(event, officer.id)}>
+    <OfficerCard
+      officer={officer}
+      selected={selected}
+      onClick={onSelect}
+      buildingName={buildingName}
+      incidentTitle={incidentTitle}
+      busName={busName}
+    />
+  </div>
+);
 
 const SmallButton: React.FC<{ active: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, disabled, onClick, children }) => (
   <button disabled={disabled} onClick={onClick} style={{ ...smallButtonStyle, borderColor: active ? 'var(--cyan)' : 'var(--border)', color: active ? 'var(--cyan)' : 'var(--text-secondary)', opacity: disabled ? 0.45 : 1 }}>
@@ -213,7 +298,36 @@ const listStyle: React.CSSProperties = {
   padding: 8,
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
+  gap: 8,
+};
+
+const officerGroupStyle: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'rgba(255,255,255,0.015)',
+  padding: 6,
+};
+
+const groupTitleStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  color: 'var(--cyan)',
+  letterSpacing: 1,
+  textTransform: 'uppercase',
+  marginBottom: 6,
+};
+
+const roleGroupStyle: React.CSSProperties = {
+  marginTop: 5,
+};
+
+const roleTitleStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  color: 'var(--text-muted)',
+  letterSpacing: 1,
+  textTransform: 'uppercase',
+  marginBottom: 4,
 };
 
 const detailStyle: React.CSSProperties = {

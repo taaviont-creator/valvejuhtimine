@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building, Incident, Officer } from '../../models';
-import { getBuildingOfficerCount } from '../../lib/calculations';
+import { getBuildingOfficerCount, getIncidentOfficers } from '../../lib/calculations';
 
 interface Props {
   building: Building;
@@ -10,6 +10,7 @@ interface Props {
   onClick: () => void;
   isFacilitator: boolean;
   onCreateIncident?: () => void;
+  onOfficerDrop?: (officerId: string) => void;
 }
 
 export const BuildingCard: React.FC<Props> = ({
@@ -20,6 +21,7 @@ export const BuildingCard: React.FC<Props> = ({
   onClick,
   isFacilitator,
   onCreateIncident,
+  onOfficerDrop,
 }) => {
   const activeIncidents = building.isResourcePool
     ? []
@@ -54,9 +56,21 @@ export const BuildingCard: React.FC<Props> = ({
     : belowMin
     ? 'Alla miinimumi'
     : 'Korras';
+  const freeSectionTitle = building.isResourcePool ? 'Vaba' : 'Üksuses vabad';
+  const dropOfficer = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const officerId = event.dataTransfer.getData('text/plain');
+    if (officerId) onOfficerDrop?.(officerId);
+  };
 
   return (
-    <div onClick={onClick} style={cardStyle(building, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}>
+    <div
+      onClick={onClick}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={dropOfficer}
+      style={cardStyle(building, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}
+    >
       {activeIncidents.length > 0 && (
         <div style={incidentBadgeStyle(activeIncidents.some((incident) => incident.status === 'escalated'))}>
           {activeIncidents.length === 1 ? 'Sündmus' : `${activeIncidents.length} sündmust`}
@@ -78,18 +92,35 @@ export const BuildingCard: React.FC<Props> = ({
       </div>
 
       {activeIncidents.length > 0 && (
-        <div style={activeIncidentTextStyle}>
-          Aktiivne: {activeIncidents.map((incident) => incident.title).join(', ')}
+        <div style={incidentSectionStyle}>
+          {activeIncidents.map((incident) => {
+            const assigned = getIncidentOfficers(incident, officers);
+            return (
+              <div key={incident.id} style={incidentGroupStyle}>
+                <div style={sectionLabelStyle}>Sündmusel: {incident.title}</div>
+                {assigned.length === 0 ? (
+                  <div style={emptyGroupStyle}>Ametnikke pole määratud</div>
+                ) : (
+                  <div style={chipWrapStyle}>
+                    {assigned.map((officer) => (
+                      <OfficerMapChip key={officer.id} officer={officer} tone="incident" incidentTitle={incident.title} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {localOfficers.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 7 }}>
-          {localOfficers.map((officer) => (
-            <span key={officer.id} title={`${officer.name} | ${officer.gender === 'male' ? 'mees' : 'naine'} | ${officer.hasEscortPermission ? 'saateõigus' : 'saateõigus puudub'} | ${officer.hasTaserPermission ? 'EŠR õigus' : 'EŠR õigus puudub'}`} style={officerChipStyle(officer)}>
-              {officer.name}
-            </span>
-          ))}
+        <div style={freeOfficerSectionStyle}>
+          <div style={sectionLabelStyle}>{freeSectionTitle}</div>
+          <div style={chipWrapStyle}>
+            {localOfficers.map((officer) => (
+              <OfficerMapChip key={officer.id} officer={officer} tone="free" />
+            ))}
+          </div>
         </div>
       )}
 
@@ -108,12 +139,30 @@ export const BuildingCard: React.FC<Props> = ({
   );
 };
 
+const OfficerMapChip: React.FC<{ officer: Officer; tone: 'free' | 'incident'; incidentTitle?: string }> = ({ officer, tone, incidentTitle }) => {
+  const isLead = officer.role === 'vanemvalvur';
+  return (
+    <span
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData('text/plain', officer.id);
+        event.dataTransfer.effectAllowed = 'move';
+      }}
+      title={`${officer.name} | ${isLead ? 'Vanemvalvur' : 'Valvur'}${incidentTitle ? ` | ${incidentTitle}` : ''}`}
+      className={`officer-chip officer-chip--${tone}`}
+    >
+      {officer.name}
+      <span className={`role-badge ${isLead ? 'role-badge--lead' : 'role-badge--guard'}`}>{isLead ? 'VV' : 'V'}</span>
+    </span>
+  );
+};
+
 const cardStyle = (building: Building, borderColor: string, selected: boolean, critical: boolean, hasIncident: boolean, belowMin: boolean): React.CSSProperties => ({
   position: 'absolute',
   left: building.x,
   top: building.y,
-  width: building.isResourcePool ? 240 : 180,
-  minHeight: 96,
+  width: building.isResourcePool ? 240 : 200,
+  minHeight: 112,
   background: critical
     ? 'rgba(255,51,85,0.06)'
     : hasIncident
@@ -201,23 +250,45 @@ const statusTextStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-const officerChipStyle = (officer: Officer): React.CSSProperties => ({
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border)',
-  color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc',
-  padding: '1px 4px',
-  borderRadius: 3,
-});
+const incidentSectionStyle: React.CSSProperties = {
+  marginTop: 8,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+};
 
-const activeIncidentTextStyle: React.CSSProperties = {
-  marginTop: 6,
-  paddingTop: 5,
+const incidentGroupStyle: React.CSSProperties = {
+  padding: '6px 7px',
+  background: 'rgba(255,170,0,0.07)',
+  border: '1px solid rgba(255,170,0,0.45)',
+  borderLeft: '3px solid var(--amber)',
+  borderRadius: 'var(--radius-sm)',
+};
+
+const freeOfficerSectionStyle: React.CSSProperties = {
+  marginTop: 7,
+  paddingTop: 6,
   borderTop: '1px solid var(--border)',
-  color: 'var(--cyan)',
+};
+
+const sectionLabelStyle: React.CSSProperties = {
+  marginBottom: 4,
+  color: 'var(--text-muted)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  letterSpacing: 0.7,
+  textTransform: 'uppercase',
+};
+
+const chipWrapStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 4,
+};
+
+const emptyGroupStyle: React.CSSProperties = {
+  color: 'var(--red)',
   fontSize: 10,
-  lineHeight: 1.25,
 };
 
 const createButtonStyle: React.CSSProperties = {

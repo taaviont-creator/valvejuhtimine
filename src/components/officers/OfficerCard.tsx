@@ -19,6 +19,15 @@ const statusColors: Record<string, string> = {
   unavailable: 'var(--text-muted)',
 };
 
+const statusBackgrounds: Record<string, string> = {
+  available: 'rgba(0,255,136,0.1)',
+  in_building: 'rgba(0,212,255,0.1)',
+  on_incident: 'rgba(255,170,0,0.13)',
+  on_escort: 'rgba(255,153,204,0.13)',
+  busy: 'rgba(255,170,0,0.13)',
+  unavailable: 'rgba(74,96,128,0.13)',
+};
+
 const statusLabels: Record<string, string> = {
   available: 'VABA',
   in_building: 'ÜKSUSES',
@@ -37,6 +46,18 @@ export const OfficerCard: React.FC<Props> = ({
   busName,
 }) => {
   const color = statusColors[officer.status] ?? 'var(--text-muted)';
+  const statusBackground = statusBackgrounds[officer.status] ?? 'transparent';
+  const isLead = officer.role === 'vanemvalvur';
+  const assignmentPrefix =
+    officer.currentIncidentId
+      ? 'Sündmusel'
+      : officer.currentBusId
+      ? 'Saatmisel'
+      : officer.status === 'busy'
+      ? 'Hõivatud'
+      : officer.status === 'unavailable'
+      ? 'Mängust väljas'
+      : 'Asukoht';
   const location = busName ?? incidentTitle ?? buildingName ?? 'Asukoht puudub';
 
   return (
@@ -45,8 +66,9 @@ export const OfficerCard: React.FC<Props> = ({
         <div>
           <span style={{ ...nameStyle, color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc' }}>{officer.name}</span>
           <span style={genderStyle}>{officer.gender === 'male' ? 'M' : 'F'}</span>
+          <span className={`role-badge ${isLead ? 'role-badge--lead' : 'role-badge--guard'}`}>{isLead ? 'VV' : 'V'}</span>
         </div>
-        <span style={{ ...statusStyle, color }}>{statusLabels[officer.status]}</span>
+        <span style={{ ...statusStyle, color, background: statusBackground, borderColor: color }}>{statusLabels[officer.status]}</span>
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
@@ -54,7 +76,7 @@ export const OfficerCard: React.FC<Props> = ({
         <Badge active={officer.hasTaserPermission} label="EŠR õigus" color="var(--amber)" />
       </div>
 
-      <div style={locationStyle}>{location}</div>
+      <div style={locationStyle}>{assignmentPrefix}: {location}</div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 7 }}>
         <span style={{ ...actionStyle, borderColor: selected ? color : 'var(--border-bright)', color: selected ? color : 'var(--text-secondary)' }}>
           Suuna / määra
@@ -107,6 +129,9 @@ const statusStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
   letterSpacing: 0.5,
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '1px 5px',
 };
 
 const locationStyle: React.CSSProperties = {

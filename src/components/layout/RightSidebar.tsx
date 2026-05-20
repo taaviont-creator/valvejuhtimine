@@ -21,6 +21,7 @@ interface Props {
   onCreateIncident: () => void;
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
+  onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
 }
 
 export const RightSidebar: React.FC<Props> = ({
@@ -33,11 +34,18 @@ export const RightSidebar: React.FC<Props> = ({
   onCreateIncident,
   onEscalate,
   onCloseIncident,
+  onOfficerDropToIncident,
 }) => {
   const [tab, setTab] = useState<Tab>('incidents');
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const closedIncidents = incidents.filter((incident) => incident.status === 'closed');
   const latestAction = decisionLog.find((entry) => entry.actor !== 'system') ?? decisionLog[0];
+  const closeIncident = (incident: Incident) => {
+    const confirmed = window.confirm(
+      `Sündmuse lõpetamisel vabastatakse sellele määratud ametnikud.\n\nVaikimisi: saada ametnikud tagasi määratud üksusesse.\n\nLõpeta sündmus "${incident.title}"?`
+    );
+    if (confirmed) onCloseIncident(incident.id);
+  };
 
   return (
     <div style={sidebarStyle}>
@@ -82,7 +90,8 @@ export const RightSidebar: React.FC<Props> = ({
                 buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
                 isFacilitator={isFacilitator}
                 onEscalate={() => onEscalate(incident.id)}
-                onClose={() => onCloseIncident(incident.id)}
+                onClose={() => closeIncident(incident)}
+                onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
               />
             ))}
             {closedIncidents.length > 0 && (

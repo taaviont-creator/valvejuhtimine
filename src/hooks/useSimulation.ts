@@ -11,6 +11,7 @@ import {
   LogActor,
   Officer,
   OfficerGender,
+  OfficerRole,
   Participant,
   SetupMode,
   Simulation,
@@ -113,6 +114,7 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
   }));
   const officers = snapshot.officers.map((officer) => ({
     ...officer,
+    role: officer.role ?? 'valvur',
     homeBuildingId:
       officer.homeBuildingId ??
       (!officer.currentIncidentId && !officer.currentBusId && officer.currentBuildingId && officer.currentBuildingId !== RESOURCE_POOL_ID
@@ -585,6 +587,7 @@ export function useSimulation() {
         const incidents = current.incidents.map((item) =>
           item.id === incidentId ? { ...item, status: 'closed' as const } : item
         );
+        const releasedWithoutHome = current.officers.some((officer) => officer.currentIncidentId === incidentId && !officer.homeBuildingId);
         const officers = current.officers.map((officer) => {
           if (officer.currentIncidentId !== incidentId) return officer;
           const homeBuildingId = officer.homeBuildingId;
@@ -604,7 +607,9 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents, officers },
           'teacher',
-          `Sündmus lõpetati: "${incident.title}". Määratud ametnikud vabastati tagasi määratud üksusesse või valves olevate ametnike hulka.`
+          releasedWithoutHome
+            ? `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse või valves olevate ametnike hulka.`
+            : `Sündmus lõpetati: "${incident.title}". Ametnikud suunati tagasi määratud üksustesse.`
         );
       });
     },
@@ -632,7 +637,8 @@ export function useSimulation() {
       gender: OfficerGender,
       hasEscortPermission: boolean,
       hasTaserPermission: boolean,
-      buildingId?: string
+      buildingId?: string,
+      role: OfficerRole = 'valvur'
     ) => {
       commit((current) => {
         if (!current.simulation) return current;
@@ -646,6 +652,7 @@ export function useSimulation() {
           simulationId: current.simulation.id,
           name: name.trim() || `A${current.officers.length + 1}`,
           gender,
+          role,
           hasEscortPermission,
           hasTaserPermission,
           status: target?.isResourcePool ? 'available' : 'in_building',

@@ -8,16 +8,24 @@ interface Props {
   officers: Officer[];
   selected: boolean;
   onClick: () => void;
+  onOfficerDrop?: (officerId: string) => void;
 }
 
-export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onClick }) => {
+export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onClick, onOfficerDrop }) => {
   const assigned = getBusOfficers(bus, officers);
   const escortQualified = assigned.filter((officer) => officer.hasEscortPermission).length;
   const hasWarning = assigned.length > 0 && escortQualified < bus.minimumEscortQualified;
   const ready = assigned.length >= bus.minimumEscortQualified && escortQualified >= bus.minimumEscortQualified;
 
+  const dropOfficer = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const officerId = event.dataTransfer.getData('text/plain');
+    if (officerId) onOfficerDrop?.(officerId);
+  };
+
   return (
-    <div onClick={onClick} style={cardStyle(index, selected, hasWarning, ready)}>
+    <div onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={dropOfficer} style={cardStyle(index, selected, hasWarning, ready)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ fontSize: 16 }}>BUSS</span>
         <span style={{ ...nameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{bus.name}</span>
@@ -35,7 +43,20 @@ export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onCli
       {assigned.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 7 }}>
           {assigned.map((officer) => (
-            <span key={officer.id} style={chipStyle(officer)}>{officer.name}</span>
+            <span
+              key={officer.id}
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData('text/plain', officer.id);
+                event.dataTransfer.effectAllowed = 'move';
+              }}
+              className="officer-chip officer-chip--escort"
+            >
+              {officer.name}
+              <span className={`role-badge ${officer.role === 'vanemvalvur' ? 'role-badge--lead' : 'role-badge--guard'}`}>
+                {officer.role === 'vanemvalvur' ? 'VV' : 'V'}
+              </span>
+            </span>
           ))}
         </div>
       )}
@@ -89,12 +110,3 @@ const statusStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-const chipStyle = (officer: Officer): React.CSSProperties => ({
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  background: officer.hasEscortPermission ? 'rgba(0,255,136,0.1)' : 'rgba(255,170,0,0.1)',
-  border: `1px solid ${officer.hasEscortPermission ? 'var(--green-dim)' : 'var(--amber-dim)'}`,
-  color: officer.hasEscortPermission ? 'var(--green)' : 'var(--amber)',
-  padding: '1px 4px',
-  borderRadius: 3,
-});

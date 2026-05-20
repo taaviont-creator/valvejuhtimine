@@ -83,7 +83,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ ...nameStyle, color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc' }}>{officer.name}</div>
-          <div style={metaStyle}>{officer.gender === 'male' ? 'Mees' : 'Naine'}</div>
+          <div style={metaStyle}>{officer.gender === 'male' ? 'Mees' : 'Naine'} · {officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}</div>
         </div>
         <button onClick={onClose} style={closeStyle}>x</button>
       </div>

@@ -33,6 +33,7 @@ export interface Building {
 }
 
 export type OfficerGender = 'male' | 'female';
+export type OfficerRole = 'valvur' | 'vanemvalvur';
 
 export type OfficerStatus =
   | 'available'
@@ -47,6 +48,7 @@ export interface Officer {
   simulationId: string;
   name: string;
   gender: OfficerGender;
+  role: OfficerRole;
   hasEscortPermission: boolean;
   hasTaserPermission: boolean;
   status: OfficerStatus;
