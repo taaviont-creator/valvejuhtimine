@@ -50,3 +50,17 @@
 [2m17:26:24[22m [36m[1m[vite][22m[39m server restarted.
 [2m17:26:25[22m [36m[1m[vite][22m[39m [32m.env.local changed, restarting server...[39m
 [2m17:26:25[22m [36m[1m[vite][22m[39m server restarted.
+[2m17:36:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/officers/OfficerCard.tsx[22m
+[2m17:37:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/officers/OfficerDetailPanel.tsx[22m
+[2m17:38:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/officers/OfficerDetailPanel.tsx[22m
+[2m17:38:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/map/BuildingCard.tsx[22m
+[2m17:39:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentCard.tsx[22m
+[2m17:39:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/warnings/WarningList.tsx[22m
+[2m17:39:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/warnings/WarningList.tsx[22m
+[2m17:39:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/LeftSidebar.tsx[22m
+[2m17:39:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/RightSidebar.tsx[22m
+[2m17:40:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx[22m
+[2m17:40:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/map/BuildingCard.tsx[22m
+[2m17:40:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentCard.tsx[22m
+[2m17:40:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/components/incidents/IncidentCard.tsx, /src/components/log/DecisionLog.tsx, /src/components/map/BusCard.tsx, /src/components/map/BuildingCard.tsx[22m
+[2m17:41:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/officers/OfficerDetailPanel.tsx[22m

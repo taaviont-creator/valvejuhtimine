@@ -55,6 +55,11 @@ export const OfficerCard: React.FC<Props> = ({
       </div>
 
       <div style={locationStyle}>{location}</div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 7 }}>
+        <span style={{ ...actionStyle, borderColor: selected ? color : 'var(--border-bright)', color: selected ? color : 'var(--text-secondary)' }}>
+          Move / Assign
+        </span>
+      </div>
     </div>
   );
 };
@@ -112,4 +117,18 @@ const locationStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
+};
+
+const actionStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 22,
+  padding: '3px 7px',
+  border: '1px solid var(--border-bright)',
+  borderRadius: 'var(--radius-sm)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  letterSpacing: 0.5,
+  textTransform: 'uppercase',
 };

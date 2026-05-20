@@ -33,7 +33,7 @@ export function calculateWarnings(
       warnings.push({
         id: `building-min-${building.id}`,
         type: 'building_below_minimum',
-        message: `${building.name} below minimum staffing (${count}/${building.minimumStaff})`,
+        message: `${building.name}: ${count} officers present, minimum is ${building.minimumStaff}. Move officers here or lower the minimum.`,
         relatedBuildingId: building.id,
       });
     }
@@ -47,7 +47,7 @@ export function calculateWarnings(
       warnings.push({
         id: `incident-empty-${incident.id}`,
         type: 'incident_unassigned',
-        message: `Incident "${incident.title}" has no officers assigned`,
+        message: `Incident "${incident.title}" has no officers assigned yet.`,
         relatedIncidentId: incident.id,
       });
     }
@@ -56,7 +56,7 @@ export function calculateWarnings(
       warnings.push({
         id: `incident-staff-${incident.id}`,
         type: 'incident_understaffed',
-        message: `Incident "${incident.title}" needs ${incident.requiredOfficers} officers, assigned ${assigned.length}`,
+        message: `Incident "${incident.title}": ${assigned.length} assigned, ${incident.requiredOfficers} required.`,
         relatedIncidentId: incident.id,
       });
     }
@@ -67,7 +67,7 @@ export function calculateWarnings(
         warnings.push({
           id: `incident-escort-${incident.id}`,
           type: 'missing_escort_permission',
-          message: `Incident "${incident.title}" requires escort-qualified officers (${escortCount}/${incident.requiredOfficers})`,
+          message: `Incident "${incident.title}" requires escort-qualified officers. Assigned escort-qualified: ${escortCount}/${incident.requiredOfficers}.`,
           relatedIncidentId: incident.id,
         });
       }
@@ -79,7 +79,7 @@ export function calculateWarnings(
         warnings.push({
           id: `incident-taser-${incident.id}`,
           type: 'missing_taser_permission',
-          message: `Incident "${incident.title}" requires taser-qualified officers (${taserCount}/${incident.requiredOfficers})`,
+          message: `Incident "${incident.title}" requires taser-qualified officers. Assigned taser-qualified: ${taserCount}/${incident.requiredOfficers}.`,
           relatedIncidentId: incident.id,
         });
       }
@@ -95,7 +95,7 @@ export function calculateWarnings(
       warnings.push({
         id: `bus-escort-${bus.id}`,
         type: 'bus_understaffed',
-        message: `${bus.name} needs ${bus.minimumEscortQualified} escort-qualified officers, assigned ${escortQualified}`,
+        message: `${bus.name}: ${escortQualified} escort-qualified officers assigned, ${bus.minimumEscortQualified} required.`,
         relatedBusId: bus.id,
       });
     }

@@ -44,19 +44,22 @@ export const IncidentCard: React.FC<Props> = ({
       <div style={{ cursor: 'pointer' }} onClick={() => setExpanded((value) => !value)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={titleTextStyle(incident.status === 'closed')}>{incident.title}</div>
-          <span style={{ ...statusStyle, color: incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--text-muted)' : color }}>
-            {statusLabels[incident.status]}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
+            <span style={{ ...statusStyle, color: incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--text-muted)' : color }}>
+              {statusLabels[incident.status]}
+            </span>
+            <span style={{ ...severityStyle, color }}>{incident.severity}</span>
+          </div>
         </div>
 
         <div style={locationStyle}>{buildingName}</div>
 
         <div style={{ display: 'flex', gap: 5, marginTop: 7, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ ...resourceStyle, color: assigned.length >= incident.requiredOfficers ? 'var(--green)' : 'var(--red)' }}>
-            {assigned.length}/{incident.requiredOfficers} officers
+            Assigned {assigned.length} / Required {incident.requiredOfficers}
           </span>
-          {incident.requiresEscortPermission && <Tag color="var(--green)" text={`Escort ${escortCount}`} />}
-          {incident.requiresTaserPermission && <Tag color="var(--amber)" text={`Taser ${taserCount}`} />}
+          <Tag color={incident.requiresEscortPermission ? 'var(--green)' : 'var(--text-muted)'} text={incident.requiresEscortPermission ? `Escort required ${escortCount}` : 'No escort req'} />
+          <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `Taser required ${taserCount}` : 'No taser req'} />
           {incident.externalEscortRequired && <Tag color="#ff99cc" text="External escort" />}
         </div>
       </div>
@@ -85,13 +88,13 @@ export const IncidentCard: React.FC<Props> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
 
-          {isFacilitator && incident.status !== 'closed' && (
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={onEscalate} style={{ ...actionButtonStyle, color: 'var(--amber)', borderColor: 'var(--amber)' }}>Escalate</button>
-              <button onClick={onClose} style={actionButtonStyle}>Close</button>
-            </div>
-          )}
+      {isFacilitator && incident.status !== 'closed' && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <button onClick={onEscalate} style={{ ...actionButtonStyle, color: 'var(--amber)', borderColor: 'var(--amber)' }}>Escalate</button>
+          <button onClick={onClose} style={actionButtonStyle}>Close</button>
         </div>
       )}
     </div>
@@ -135,6 +138,15 @@ const statusStyle: React.CSSProperties = {
   letterSpacing: 0.5,
   whiteSpace: 'nowrap',
   textTransform: 'uppercase',
+};
+
+const severityStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  letterSpacing: 0.5,
+  whiteSpace: 'nowrap',
+  textTransform: 'uppercase',
+  opacity: 0.9,
 };
 
 const locationStyle: React.CSSProperties = {

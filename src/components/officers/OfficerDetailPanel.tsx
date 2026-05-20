@@ -1,6 +1,8 @@
 import React from 'react';
 import { Building, EscortBus, Incident, Officer } from '../../models';
 
+type DestinationType = 'building' | 'incident' | 'bus' | 'pool';
+
 interface Props {
   officer: Officer;
   buildings: Building[];
@@ -24,7 +26,21 @@ export const OfficerDetailPanel: React.FC<Props> = ({
   onRelease,
   onClose,
 }) => {
+  const [destinationType, setDestinationType] = React.useState<DestinationType>('building');
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
+  const pool = buildings.find((building) => building.isResourcePool);
+  const currentLocation =
+    buses.find((bus) => bus.id === officer.currentBusId)?.name ??
+    incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
+    buildings.find((building) => building.id === officer.currentBuildingId)?.name ??
+    'No location';
+
+  const destinationCount: Record<DestinationType, number> = {
+    building: buildings.filter((building) => !building.isResourcePool).length,
+    incident: activeIncidents.length,
+    bus: buses.length,
+    pool: pool ? 1 : 0,
+  };
 
   return (
     <div style={panelStyle}>
@@ -36,54 +52,94 @@ export const OfficerDetailPanel: React.FC<Props> = ({
         <button onClick={onClose} style={closeStyle}>x</button>
       </div>
 
+      <div style={currentLocationStyle}>
+        <span>{officer.status.replace('_', ' ')}</span>
+        <strong>{currentLocation}</strong>
+      </div>
+
       <div style={{ display: 'flex', gap: 6 }}>
         <RightBadge label="Escort" active={officer.hasEscortPermission} />
         <RightBadge label="Taser" active={officer.hasTaserPermission} />
       </div>
 
-      <Section title="Move to building or pool">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 120, overflowY: 'auto' }}>
-          {buildings.map((building) => (
-            <ActionBtn
-              key={building.id}
-              label={building.name}
-              disabled={officer.currentBuildingId === building.id && !officer.currentIncidentId && !officer.currentBusId}
-              onClick={() => onMoveToBuilding(building.id)}
-              accent={building.isResourcePool ? 'var(--green)' : 'var(--cyan)'}
-            />
+      <div>
+        <div style={sectionTitleStyle}>Destination type</div>
+        <div style={destinationTabsStyle}>
+          {(['building', 'incident', 'bus', 'pool'] as DestinationType[]).map((type) => (
+            <button
+              key={type}
+              onClick={() => setDestinationType(type)}
+              disabled={destinationCount[type] === 0}
+              style={destinationTabStyle(destinationType === type, destinationCount[type] === 0)}
+            >
+              {type === 'building' ? 'Building' : type === 'incident' ? 'Incident' : type === 'bus' ? 'Escort bus' : 'Pool'}
+            </button>
           ))}
         </div>
-      </Section>
+      </div>
 
-      {activeIncidents.length > 0 && (
-        <Section title="Assign to incident">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {activeIncidents.map((incident) => (
+      {destinationType === 'building' && (
+        <Section title="Choose building">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 150, overflowY: 'auto' }}>
+            {buildings.filter((building) => !building.isResourcePool).map((building) => (
               <ActionBtn
-                key={incident.id}
-                label={incident.title}
-                disabled={officer.currentIncidentId === incident.id}
-                onClick={() => onAssignToIncident(incident.id)}
-                accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
+                key={building.id}
+                label={building.name}
+                disabled={officer.currentBuildingId === building.id && !officer.currentIncidentId && !officer.currentBusId}
+                onClick={() => onMoveToBuilding(building.id)}
+                accent="var(--cyan)"
               />
             ))}
           </div>
         </Section>
       )}
 
-      <Section title="Assign to escort bus">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {buses.map((bus) => (
-            <ActionBtn
-              key={bus.id}
-              label={bus.name}
-              disabled={officer.currentBusId === bus.id}
-              onClick={() => onAssignToBus(bus.id)}
-              accent="var(--amber)"
-            />
-          ))}
-        </div>
-      </Section>
+      {destinationType === 'incident' && (
+        <Section title="Choose active incident">
+          {activeIncidents.length === 0 ? (
+            <div style={emptyDestinationStyle}>No active incidents</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {activeIncidents.map((incident) => (
+                <ActionBtn
+                  key={incident.id}
+                  label={`${incident.title} (${incident.requiredOfficers} needed)`}
+                  disabled={officer.currentIncidentId === incident.id}
+                  onClick={() => onAssignToIncident(incident.id)}
+                  accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
+                />
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
+      {destinationType === 'bus' && (
+        <Section title="Choose escort bus">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {buses.map((bus) => (
+              <ActionBtn
+                key={bus.id}
+                label={bus.name}
+                disabled={officer.currentBusId === bus.id}
+                onClick={() => onAssignToBus(bus.id)}
+                accent="var(--amber)"
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {destinationType === 'pool' && pool && (
+        <Section title="Available resource pool">
+          <ActionBtn
+            label={pool.name}
+            disabled={officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId}
+            onClick={() => onMoveToBuilding(pool.id)}
+            accent="var(--green)"
+          />
+        </Section>
+      )}
 
       <button onClick={onRelease} style={releaseStyle}>Return to resource pool</button>
     </div>
@@ -113,7 +169,8 @@ const ActionBtn: React.FC<{ label: string; disabled: boolean; onClick: () => voi
     onClick={onClick}
     disabled={disabled}
     style={{
-      padding: '5px 8px',
+      minHeight: 30,
+      padding: '6px 8px',
       background: disabled ? 'var(--bg-card)' : 'transparent',
       border: `1px solid ${disabled ? 'var(--border)' : accent}`,
       borderRadius: 'var(--radius-sm)',
@@ -159,6 +216,20 @@ const closeStyle: React.CSSProperties = {
   padding: '0 4px',
 };
 
+const currentLocationStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '72px 1fr',
+  gap: 7,
+  alignItems: 'center',
+  padding: '7px 8px',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  fontSize: 11,
+  color: 'var(--text-secondary)',
+  textTransform: 'uppercase',
+};
+
 const sectionTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
@@ -166,6 +237,34 @@ const sectionTitleStyle: React.CSSProperties = {
   letterSpacing: 1.5,
   marginBottom: 5,
   textTransform: 'uppercase',
+};
+
+const destinationTabsStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 5,
+};
+
+const destinationTabStyle = (active: boolean, disabled: boolean): React.CSSProperties => ({
+  minHeight: 30,
+  padding: '5px 6px',
+  background: active ? 'var(--bg-elevated)' : 'var(--bg-card)',
+  border: `1px solid ${active ? 'var(--cyan)' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-sm)',
+  color: active ? 'var(--cyan)' : 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  textTransform: 'uppercase',
+  opacity: disabled ? 0.45 : 1,
+});
+
+const emptyDestinationStyle: React.CSSProperties = {
+  padding: '7px 8px',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-muted)',
+  fontSize: 11,
 };
 
 const badgeStyle: React.CSSProperties = {

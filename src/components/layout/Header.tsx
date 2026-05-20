@@ -39,7 +39,12 @@ export const Header: React.FC<Props> = ({
 
       <div>
         <div style={nameStyle}>{simulation.name}</div>
-        <div style={metaStyle}>Join code {simulation.joinCode} | {simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
+        <div style={metaStyle}>{simulation.status} | {simulation.setupMode === 'teacher_assigned' ? 'Mode A' : 'Mode B'}</div>
+      </div>
+
+      <div style={joinCodeStyle}>
+        <span>Join code</span>
+        <strong>{simulation.joinCode}</strong>
       </div>
 
       <div style={roleStyle(role)}>{role === 'facilitator' ? 'Teacher' : 'Student'}</div>
@@ -126,6 +131,21 @@ const roleStyle = (role: AppRole): React.CSSProperties => ({
   color: role === 'facilitator' ? 'var(--amber)' : 'var(--cyan)',
   textTransform: 'uppercase',
 });
+
+const joinCodeStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  padding: '5px 9px',
+  background: 'rgba(0,212,255,0.1)',
+  border: '1px solid var(--cyan-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  letterSpacing: 0.8,
+  textTransform: 'uppercase',
+};
 
 const joinLinkStyle: React.CSSProperties = {
   width: 285,
