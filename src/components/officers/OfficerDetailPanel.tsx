@@ -9,8 +9,11 @@ const statusLabels: Record<Officer['status'], string> = {
   on_incident: 'sündmusel',
   on_escort: 'saatmisel',
   busy: 'hõivatud',
-  unavailable: 'väljas',
+  unavailable: 'mängust väljas',
 };
+
+const reassignmentMessage = 'Ametnik on juba hõivatud. Kas vabastada ta praeguselt ülesandelt ja suunata uude kohta?';
+const escortPermissionMessage = 'Ametnikul puudub saateõigus. Saatebussi saab määrata ainult saateõigusega ametniku.';
 
 interface Props {
   officer: Officer;
@@ -43,6 +46,30 @@ export const OfficerDetailPanel: React.FC<Props> = ({
     incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
     buildings.find((building) => building.id === officer.currentBuildingId)?.name ??
     'Asukoht puudub';
+  const isOccupied = Boolean(
+    officer.currentIncidentId ||
+      officer.currentBusId ||
+      officer.status === 'busy' ||
+      officer.status === 'unavailable'
+  );
+
+  const confirmReassignment = () => !isOccupied || window.confirm(reassignmentMessage);
+  const moveToBuilding = (buildingId: string) => {
+    if (confirmReassignment()) onMoveToBuilding(buildingId);
+  };
+  const assignToIncident = (incidentId: string) => {
+    if (confirmReassignment()) onAssignToIncident(incidentId);
+  };
+  const assignToBus = (busId: string) => {
+    if (!officer.hasEscortPermission) {
+      window.alert(escortPermissionMessage);
+      return;
+    }
+    if (confirmReassignment()) onAssignToBus(busId);
+  };
+  const releaseToPool = () => {
+    if (confirmReassignment()) onRelease();
+  };
 
   const destinationCount: Record<DestinationType, number> = {
     building: buildings.filter((building) => !building.isResourcePool).length,
@@ -95,7 +122,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                 key={building.id}
                 label={building.name}
                 disabled={officer.currentBuildingId === building.id && !officer.currentIncidentId && !officer.currentBusId}
-                onClick={() => onMoveToBuilding(building.id)}
+                onClick={() => moveToBuilding(building.id)}
                 accent="var(--cyan)"
               />
             ))}
@@ -114,7 +141,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                   key={incident.id}
                   label={`${incident.title} (vajalik ${incident.requiredOfficers})`}
                   disabled={officer.currentIncidentId === incident.id}
-                  onClick={() => onAssignToIncident(incident.id)}
+                  onClick={() => assignToIncident(incident.id)}
                   accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
                 />
               ))}
@@ -131,7 +158,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                 key={bus.id}
                 label={bus.name}
                 disabled={officer.currentBusId === bus.id}
-                onClick={() => onAssignToBus(bus.id)}
+                onClick={() => assignToBus(bus.id)}
                 accent="var(--amber)"
               />
             ))}
@@ -144,13 +171,13 @@ export const OfficerDetailPanel: React.FC<Props> = ({
           <ActionBtn
             label={pool.name}
             disabled={officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId}
-            onClick={() => onMoveToBuilding(pool.id)}
+            onClick={() => moveToBuilding(pool.id)}
             accent="var(--green)"
           />
         </Section>
       )}
 
-      <button onClick={onRelease} style={releaseStyle}>Vabasta valves olevate ametnike hulka</button>
+      <button onClick={releaseToPool} style={releaseStyle}>Vabasta valves olevate ametnike hulka</button>
     </div>
   );
 };

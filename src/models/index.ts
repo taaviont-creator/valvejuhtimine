@@ -50,6 +50,7 @@ export interface Officer {
   hasEscortPermission: boolean;
   hasTaserPermission: boolean;
   status: OfficerStatus;
+  homeBuildingId: string | null;
   currentBuildingId: string | null;
   currentIncidentId: string | null;
   currentBusId: string | null;

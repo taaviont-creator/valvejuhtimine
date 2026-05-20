@@ -25,7 +25,7 @@ const statusLabels: Record<string, string> = {
   on_incident: 'SÜNDMUSEL',
   on_escort: 'SAATMISEL',
   busy: 'HÕIVATUD',
-  unavailable: 'VÄLJAS',
+  unavailable: 'MÄNGUST VÄLJAS',
 };
 
 export const OfficerCard: React.FC<Props> = ({

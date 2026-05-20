@@ -72,7 +72,7 @@ export function createDefaultOfficers(simulationId: string, placeInPool: boolean
     'canteen',
   ];
 
-  const officers: Array<Omit<Officer, 'simulationId' | 'status' | 'currentBuildingId' | 'currentIncidentId' | 'currentBusId'>> = [
+  const officers: Array<Omit<Officer, 'simulationId' | 'status' | 'homeBuildingId' | 'currentBuildingId' | 'currentIncidentId' | 'currentBusId'>> = [
     { id: 'A1', name: 'A1', gender: 'male', hasEscortPermission: true, hasTaserPermission: true },
     { id: 'A2', name: 'A2', gender: 'male', hasEscortPermission: false, hasTaserPermission: false },
     { id: 'A3', name: 'A3', gender: 'female', hasEscortPermission: true, hasTaserPermission: false },
@@ -91,6 +91,7 @@ export function createDefaultOfficers(simulationId: string, placeInPool: boolean
     ...officer,
     simulationId,
     status: placeInPool ? 'available' : 'in_building',
+    homeBuildingId: placeInPool ? null : assignments[index],
     currentBuildingId: placeInPool ? RESOURCE_POOL_ID : assignments[index],
     currentIncidentId: null,
     currentBusId: null,

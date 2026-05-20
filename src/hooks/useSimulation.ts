@@ -49,6 +49,25 @@ function actorForRole(role: AppRole | null): LogActor {
   return role === 'facilitator' ? 'teacher' : role === 'commander' ? 'student' : 'system';
 }
 
+function isOccupied(officer: Officer) {
+  return Boolean(officer.currentIncidentId || officer.currentBusId || officer.status === 'busy' || officer.status === 'unavailable');
+}
+
+function officerAssignmentLabel(officer: Officer, state: AppState) {
+  return (
+    state.incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
+    state.buses.find((bus) => bus.id === officer.currentBusId)?.name ??
+    state.buildings.find((building) => building.id === officer.currentBuildingId)?.name ??
+    (officer.status === 'busy' ? 'Hõivatud' : officer.status === 'unavailable' ? 'Mängust väljas' : 'Asukoht puudub')
+  );
+}
+
+function assignmentLog(officer: Officer, state: AppState, targetLabel: string, fallback: string) {
+  return isOccupied(officer)
+    ? `Ametnik ${officer.name} suunati ümber: ${officerAssignmentLabel(officer, state)} → ${targetLabel}`
+    : fallback;
+}
+
 function emptyState(): AppState {
   return {
     role: null,
@@ -92,13 +111,22 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
     ...bus,
     name: BUS_NAMES_BY_ID[bus.id] ?? bus.name,
   }));
+  const officers = snapshot.officers.map((officer) => ({
+    ...officer,
+    homeBuildingId:
+      officer.homeBuildingId ??
+      (!officer.currentIncidentId && !officer.currentBusId && officer.currentBuildingId && officer.currentBuildingId !== RESOURCE_POOL_ID
+        ? officer.currentBuildingId
+        : null),
+  }));
 
   return {
     ...state,
     ...snapshot,
     buildings,
+    officers,
     buses,
-    warnings: calculateWarnings(buildings, snapshot.officers, snapshot.incidents, buses),
+    warnings: calculateWarnings(buildings, officers, snapshot.incidents, buses),
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
     syncMessage: supabaseConfigWarning,
   };
@@ -328,14 +356,23 @@ export function useSimulation() {
     (setupMode: SetupMode) => {
       commit((current) => {
         if (!current.simulation || current.simulation.status !== 'setup') return current;
+        const firstBuildingId = current.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID;
         const officers = current.officers.map((officer) => ({
           ...officer,
           status: setupMode === 'student_places_officers' ? ('available' as const) : officer.status === 'available' ? ('in_building' as const) : officer.status,
+          homeBuildingId:
+            setupMode === 'student_places_officers'
+              ? null
+              : officer.homeBuildingId && officer.homeBuildingId !== RESOURCE_POOL_ID
+              ? officer.homeBuildingId
+              : firstBuildingId,
           currentBuildingId:
             setupMode === 'student_places_officers'
               ? RESOURCE_POOL_ID
               : officer.currentBuildingId === RESOURCE_POOL_ID
-              ? current.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID
+              ? officer.homeBuildingId && officer.homeBuildingId !== RESOURCE_POOL_ID
+                ? officer.homeBuildingId
+                : firstBuildingId
               : officer.currentBuildingId,
           currentIncidentId: null,
           currentBusId: null,
@@ -367,6 +404,7 @@ export function useSimulation() {
           item.id === officerId
             ? {
                 ...item,
+                homeBuildingId: !building.isResourcePool && !item.homeBuildingId ? buildingId : item.homeBuildingId,
                 currentBuildingId: buildingId,
                 currentIncidentId: null,
                 currentBusId: null,
@@ -382,7 +420,7 @@ export function useSimulation() {
             incidents: removeOfficerFromAllIncidents(officerId, current.incidents),
           },
           actorForRole(current.role),
-          `Ametnik ${officer.name} suunati: ${building.name}`
+          assignmentLog(officer, current, building.name, `Ametnik ${officer.name} suunati: ${building.name}`)
         );
       });
     },
@@ -412,7 +450,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, officers },
           actorForRole(current.role),
-          `Ametnik ${officer.name} määrati sündmusele "${incident.title}"`
+          assignmentLog(officer, current, incident.title, `Ametnik ${officer.name} määrati sündmusele "${incident.title}"`)
         );
       });
     },
@@ -426,6 +464,13 @@ export function useSimulation() {
         const officer = current.officers.find((item) => item.id === officerId);
         const bus = current.buses.find((item) => item.id === busId);
         if (!officer || !bus) return current;
+        if (!officer.hasEscortPermission) {
+          return appendLog(
+            current,
+            'system',
+            `Hoiatus tekkis: ametnikul ${officer.name} puudub saateõigus. Saatebussi saab määrata ainult saateõigusega ametniku.`
+          );
+        }
 
         const officers = current.officers.map((item) =>
           item.id === officerId
@@ -439,7 +484,11 @@ export function useSimulation() {
             : item
         );
 
-        return appendLog({ ...current, officers }, actorForRole(current.role), `Ametnik ${officer.name} määrati: ${bus.name}`);
+        return appendLog(
+          { ...current, officers },
+          actorForRole(current.role),
+          assignmentLog(officer, current, bus.name, `Ametnik ${officer.name} määrati: ${bus.name}`)
+        );
       });
     },
     [commit]
@@ -536,18 +585,27 @@ export function useSimulation() {
         const incidents = current.incidents.map((item) =>
           item.id === incidentId ? { ...item, status: 'closed' as const } : item
         );
-        const officers = current.officers.map((officer) =>
-          officer.currentIncidentId === incidentId
-            ? {
-                ...officer,
-                currentBuildingId: RESOURCE_POOL_ID,
-                currentIncidentId: null,
-                currentBusId: null,
-                status: 'available' as const,
-              }
-            : officer
+        const officers = current.officers.map((officer) => {
+          if (officer.currentIncidentId !== incidentId) return officer;
+          const homeBuildingId = officer.homeBuildingId;
+          const homeBuilding = homeBuildingId
+            ? current.buildings.find((building) => building.id === homeBuildingId && !building.isResourcePool)
+            : undefined;
+          const targetBuildingId = homeBuilding?.id ?? RESOURCE_POOL_ID;
+
+          return {
+            ...officer,
+            currentBuildingId: targetBuildingId,
+            currentIncidentId: null,
+            currentBusId: null,
+            status: homeBuilding ? ('in_building' as const) : ('available' as const),
+          };
+        });
+        return appendLog(
+          { ...current, incidents, officers },
+          'teacher',
+          `Sündmus lõpetati: "${incident.title}". Määratud ametnikud vabastati tagasi määratud üksusesse või valves olevate ametnike hulka.`
         );
-        return appendLog({ ...current, incidents, officers }, 'teacher', `Sündmus lõpetati: "${incident.title}"`);
       });
     },
     [commit]
@@ -591,6 +649,7 @@ export function useSimulation() {
           hasEscortPermission,
           hasTaserPermission,
           status: target?.isResourcePool ? 'available' : 'in_building',
+          homeBuildingId: target?.isResourcePool ? null : targetId,
           currentBuildingId: targetId,
           currentIncidentId: null,
           currentBusId: null,
