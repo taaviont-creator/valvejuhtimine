@@ -1,4 +1,4 @@
-import { SimulationSnapshot } from '../models';
+import { AppRole, SimulationSnapshot } from '../models';
 
 const INDEX_KEY = 'prison-shift-simulation:index';
 const CHANNEL_NAME = 'prison-shift-simulation-sync';
@@ -9,6 +9,7 @@ export type SnapshotLoadResult = {
   snapshot: SimulationSnapshot | null;
   mode: 'supabase' | 'local';
   message?: string;
+  matchedRole?: AppRole;
 };
 
 const supabaseUrl = cleanEnvValue(import.meta.env.VITE_SUPABASE_URL)?.replace(/\/$/, '');
@@ -72,7 +73,9 @@ function writeIndex(index: Record<string, string>) {
 function saveLocal(snapshot: SimulationSnapshot) {
   localStorage.setItem(snapshotKey(snapshot.simulation.id), JSON.stringify(snapshot));
   const index = readIndex();
-  index[normalizeJoinCode(snapshot.simulation.joinCode)] = snapshot.simulation.id;
+  for (const code of accessCodes(snapshot)) {
+    index[normalizeJoinCode(code)] = snapshot.simulation.id;
+  }
   writeIndex(index);
 }
 
@@ -90,35 +93,83 @@ function getLocalByJoinCode(joinCode: string): SimulationSnapshot | null {
   return id ? getLocalById(id) : null;
 }
 
+function accessCodes(snapshot: SimulationSnapshot): string[] {
+  return [
+    snapshot.simulation.joinCode,
+    snapshot.simulation.teacherCode,
+    snapshot.simulation.studentCode,
+  ].filter((code): code is string => Boolean(code));
+}
+
+function matchedRoleForCode(snapshot: SimulationSnapshot, joinCode: string): AppRole | undefined {
+  const normalized = normalizeJoinCode(joinCode);
+  if (snapshot.simulation.teacherCode && normalizeJoinCode(snapshot.simulation.teacherCode) === normalized) return 'facilitator';
+  if (snapshot.simulation.studentCode && normalizeJoinCode(snapshot.simulation.studentCode) === normalized) return 'commander';
+  if (normalizeJoinCode(snapshot.simulation.joinCode) === normalized) return 'commander';
+  return undefined;
+}
+
 async function saveRemote(snapshot: SimulationSnapshot) {
   if (!hasSupabaseConfig) return;
+
+  const body = {
+    id: snapshot.simulation.id,
+    join_code: snapshot.simulation.joinCode,
+    teacher_code: snapshot.simulation.teacherCode,
+    student_code: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+    payload: snapshot,
+    updated_at: snapshot.simulation.updatedAt,
+  };
 
   const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?on_conflict=id`, {
     method: 'POST',
     headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
-    body: JSON.stringify({
-      id: snapshot.simulation.id,
-      join_code: snapshot.simulation.joinCode,
-      payload: snapshot,
-      updated_at: snapshot.simulation.updatedAt,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw new Error(await describeSupabaseError(response, 'save'));
+    const error = await describeSupabaseError(response, 'save');
+    if (error.includes('teacher_code') || error.includes('student_code')) {
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?on_conflict=id`, {
+        method: 'POST',
+        headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({
+          id: snapshot.simulation.id,
+          join_code: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+          payload: snapshot,
+          updated_at: snapshot.simulation.updatedAt,
+        }),
+      });
+      if (legacyResponse.ok) return;
+      throw new Error(await describeSupabaseError(legacyResponse, 'save'));
+    }
+    throw new Error(error);
   }
 }
 
 async function getRemoteByJoinCode(joinCode: string): Promise<SimulationSnapshot | null> {
   if (!hasSupabaseConfig) return null;
 
-  const query = `select=payload&join_code=eq.${encodeURIComponent(normalizeJoinCode(joinCode))}&limit=1`;
+  const normalized = encodeURIComponent(normalizeJoinCode(joinCode));
+  const query = `select=payload,join_code,teacher_code,student_code&or=(teacher_code.eq.${normalized},student_code.eq.${normalized},join_code.eq.${normalized})&limit=1`;
   const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?${query}`, {
     headers: headers(),
   });
 
   if (!response.ok) {
-    throw new Error(await describeSupabaseError(response, 'load by join code'));
+    const error = await describeSupabaseError(response, 'load by access code');
+    if (error.includes('teacher_code') || error.includes('student_code')) {
+      const legacyQuery = `select=payload&join_code=eq.${normalized}&limit=1`;
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?${legacyQuery}`, {
+        headers: headers(),
+      });
+      if (!legacyResponse.ok) {
+        throw new Error(await describeSupabaseError(legacyResponse, 'load by join code'));
+      }
+      const legacyRows = (await legacyResponse.json()) as Array<{ payload: SimulationSnapshot }>;
+      return legacyRows[0]?.payload ?? null;
+    }
+    throw new Error(error);
   }
 
   const rows = (await response.json()) as Array<{ payload: SimulationSnapshot }>;
@@ -175,7 +226,7 @@ export async function getSimulationByJoinCode(joinCode: string): Promise<Snapsho
       const remote = await getRemoteByJoinCode(normalized);
       if (remote) {
         saveLocal(remote);
-        return { snapshot: remote, mode: 'supabase' };
+        return { snapshot: remote, mode: 'supabase', matchedRole: matchedRoleForCode(remote, normalized) };
       }
     } catch {
       message = 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku režiimi';
@@ -186,6 +237,7 @@ export async function getSimulationByJoinCode(joinCode: string): Promise<Snapsho
     snapshot: getLocalByJoinCode(normalized),
     mode: 'local',
     message,
+    matchedRole: getLocalByJoinCode(normalized) ? matchedRoleForCode(getLocalByJoinCode(normalized)!, normalized) : undefined,
   };
 }
 

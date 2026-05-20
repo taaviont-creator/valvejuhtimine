@@ -20,12 +20,14 @@ export const BUS_NAMES_BY_ID: Record<string, string> = {
   'bus-2': 'Saatebuss 2',
 };
 
-export function createDefaultSimulation(id: string, joinCode: string, name: string): Simulation {
+export function createDefaultSimulation(id: string, joinCode: string, name: string, teacherCode?: string, studentCode?: string): Simulation {
   const createdAt = new Date().toISOString();
   return {
     id,
     name,
     joinCode,
+    teacherCode,
+    studentCode: studentCode ?? joinCode,
     status: 'setup',
     setupMode: 'teacher_assigned',
     createdAt,

@@ -47,6 +47,14 @@ function generateJoinCode() {
   return `VJ-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+function generateTeacherCode() {
+  return `OP-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function generateStudentCode() {
+  return `OPIL-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 function actorForRole(role: AppRole | null): LogActor {
   return role === 'facilitator' ? 'teacher' : role === 'commander' ? 'student' : 'system';
 }
@@ -109,6 +117,10 @@ function toSnapshot(state: AppState): SimulationSnapshot | null {
 }
 
 function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
+  const simulation = {
+    ...snapshot.simulation,
+    studentCode: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+  };
   const buildings = snapshot.buildings.map((building) => ({
     ...building,
     name: BUILDING_NAMES_BY_ID[building.id] ?? (building.isResourcePool ? BUILDING_NAMES_BY_ID[RESOURCE_POOL_ID] : building.name),
@@ -130,6 +142,7 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
   return {
     ...state,
     ...snapshot,
+    simulation,
     buildings,
     officers,
     buses,
@@ -229,9 +242,12 @@ export function useSimulation() {
   const createSimulation = useCallback(
     (name: string, setupMode: SetupMode, displayName: string) => {
       const simulationId = uuidv4();
-      const joinCode = generateJoinCode();
+      const teacherCode = generateTeacherCode();
+      let studentCode = generateStudentCode();
+      while (studentCode === teacherCode) studentCode = generateStudentCode();
+      const joinCode = studentCode;
       const simulation: Simulation = {
-        ...createDefaultSimulation(simulationId, joinCode, name.trim() || 'Valvejuhtimise simulatsioon'),
+        ...createDefaultSimulation(simulationId, joinCode, name.trim() || 'Valvejuhtimise simulatsioon', teacherCode, studentCode),
         setupMode,
       };
       const participant: Participant = {
@@ -255,23 +271,24 @@ export function useSimulation() {
         buses,
         incidents: [],
         decisionLog: [
+          logEntry(simulationId, 'teacher', 'Simulatsioon loodud. Õppejõu ja õpilase koodid genereeritud.'),
           logEntry(simulationId, 'teacher', `Simulatsioon loodud (${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'})`),
         ],
       });
       setState(initial);
       persist(initial);
-      window.history.replaceState(null, '', `?join=${joinCode}&role=teacher`);
+      window.history.replaceState(null, '', `?join=${teacherCode}&role=teacher`);
     },
     [persist]
   );
 
   const joinSimulation = useCallback(
-    async (joinCode: string, role: AppRole, displayName: string) => {
+    async (joinCode: string, requestedRole: AppRole | null, displayName: string) => {
       setState((current) => ({ ...current, syncStatus: 'loading', syncMessage: 'Liitumine simulatsiooniga...' }));
       try {
         const normalizedJoinCode = normalizeJoinCode(joinCode);
         if (!normalizedJoinCode) {
-          setState((current) => ({ ...current, syncStatus: hasSupabaseConfig ? 'supabase' : 'local', syncMessage: 'Simulatsiooni koodi ei leitud' }));
+          setState((current) => ({ ...current, syncStatus: hasSupabaseConfig ? 'supabase' : 'local', syncMessage: 'Koodi ei leitud.' }));
           return false;
         }
 
@@ -281,7 +298,29 @@ export function useSimulation() {
           setState((current) => ({
             ...current,
             syncStatus: result.mode,
-            syncMessage: result.message ?? 'Simulatsiooni koodi ei leitud',
+            syncMessage: result.message ?? 'Koodi ei leitud.',
+          }));
+          return false;
+        }
+
+        const role = result.matchedRole;
+        if (!role) {
+          setState((current) => ({
+            ...current,
+            syncStatus: result.mode,
+            syncMessage: 'Selle koodiga ei saa sellesse vaatesse siseneda',
+          }));
+          return false;
+        }
+
+        if (requestedRole && requestedRole !== role) {
+          setState((current) => ({
+            ...current,
+            syncStatus: result.mode,
+            syncMessage:
+              role === 'commander'
+                ? 'Selle koodiga saab siseneda ainult korrapidaja vaatesse.'
+                : 'Selle koodiga saab siseneda ainult õppejõu vaatesse.',
           }));
           return false;
         }
@@ -303,14 +342,15 @@ export function useSimulation() {
           syncMessage: result.message,
           participants: [...snapshot.participants, participant],
           decisionLog: [
-            logEntry(snapshot.simulation.id, role === 'facilitator' ? 'teacher' : 'student', `${participant.displayName} liitus simulatsiooniga`),
+            logEntry(snapshot.simulation.id, role === 'facilitator' ? 'teacher' : 'student', role === 'facilitator' ? 'Õppejõud liitus simulatsiooniga.' : 'Korrapidaja liitus simulatsiooniga.'),
             ...snapshot.decisionLog,
           ],
         });
 
         setState(next);
         persist(next);
-        window.history.replaceState(null, '', `?join=${snapshot.simulation.joinCode}&role=${role === 'facilitator' ? 'teacher' : 'student'}`);
+        const roleCode = role === 'facilitator' ? snapshot.simulation.teacherCode ?? normalizedJoinCode : snapshot.simulation.studentCode ?? snapshot.simulation.joinCode;
+        window.history.replaceState(null, '', `?join=${roleCode}&role=${role === 'facilitator' ? 'teacher' : 'student'}`);
         return true;
       } catch (error) {
         setState((current) => ({

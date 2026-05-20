@@ -23,7 +23,9 @@ export const Header: React.FC<Props> = ({
   onReset,
 }) => {
   const isFacilitator = role === 'facilitator';
-  const joinUrl = `${window.location.origin}${window.location.pathname}?join=${simulation.joinCode}&role=student`;
+  const teacherCode = simulation.teacherCode ?? simulation.joinCode;
+  const studentCode = simulation.studentCode ?? simulation.joinCode;
+  const joinUrl = `${window.location.origin}${window.location.pathname}?join=${studentCode}&role=student`;
   const syncLabel =
     syncStatus === 'supabase'
       ? 'Supabase sünkroonimine sees'
@@ -45,9 +47,16 @@ export const Header: React.FC<Props> = ({
       </div>
 
       {isFacilitator && (
-        <div style={joinCodeStyle}>
-          <span>Simulatsiooni kood</span>
-          <strong>{simulation.joinCode}</strong>
+        <div style={accessPanelStyle}>
+          <div style={accessCodeRowStyle}>
+            <span>Õppejõu kood</span>
+            <strong>{teacherCode}</strong>
+          </div>
+          <div style={accessCodeRowStyle}>
+            <span>Õpilase kood</span>
+            <strong>{studentCode}</strong>
+          </div>
+          <div style={accessWarningStyle}>Jaga õpilastele ainult õpilase koodi.</div>
         </div>
       )}
 
@@ -136,19 +145,33 @@ const roleStyle = (role: AppRole): React.CSSProperties => ({
   textTransform: 'uppercase',
 });
 
-const joinCodeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 7,
-  padding: '5px 9px',
+const accessPanelStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '2px 8px',
+  padding: '5px 8px',
   background: 'rgba(0,212,255,0.1)',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 9,
   letterSpacing: 0.8,
   textTransform: 'uppercase',
+};
+
+const accessCodeRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  whiteSpace: 'nowrap',
+};
+
+const accessWarningStyle: React.CSSProperties = {
+  gridColumn: '1 / -1',
+  color: 'var(--amber)',
+  fontSize: 8,
+  letterSpacing: 0.5,
 };
 
 const joinLinkStyle: React.CSSProperties = {

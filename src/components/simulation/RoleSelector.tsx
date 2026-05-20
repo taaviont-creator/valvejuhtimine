@@ -3,7 +3,7 @@ import { AppRole, SetupMode } from '../../models';
 
 interface Props {
   onCreate: (name: string, setupMode: SetupMode, displayName: string) => void;
-  onJoin: (joinCode: string, role: AppRole, displayName: string) => Promise<boolean>;
+  onJoin: (joinCode: string, requestedRole: AppRole | null, displayName: string) => Promise<boolean>;
   syncStatus: string;
   syncMessage?: string;
 }
@@ -12,16 +12,16 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const [simulationName, setSimulationName] = useState('Valvejuhtimise õppus');
   const [teacherName, setTeacherName] = useState('Õppejõud');
-  const [studentName, setStudentName] = useState('Korrapidaja');
+  const [joinName, setJoinName] = useState('');
   const [setupMode, setSetupMode] = useState<SetupMode>('teacher_assigned');
   const [joinCode, setJoinCode] = useState(search.get('join') ?? '');
-  const [joinRole, setJoinRole] = useState<AppRole>(search.get('role') === 'teacher' ? 'facilitator' : 'commander');
+  const requestedRole: AppRole | null = search.get('role') === 'teacher' ? 'facilitator' : search.get('role') === 'student' ? 'commander' : null;
   const [joining, setJoining] = useState(false);
 
   const join = async () => {
     if (!joinCode.trim()) return;
     setJoining(true);
-    await onJoin(joinCode, joinRole, joinRole === 'facilitator' ? teacherName : studentName);
+    await onJoin(joinCode, requestedRole, joinName);
     setJoining(false);
   };
 
@@ -62,35 +62,35 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
             </div>
 
             <button style={primaryButtonStyle} onClick={() => onCreate(simulationName, setupMode, teacherName)}>
-              Loo simulatsioon
+              Loo simulatsioon õppejõuna
             </button>
           </section>
 
           <section style={panelStyle}>
-            <div style={panelTitleStyle}>Liitu olemasoleva simulatsiooniga</div>
-            <Field label="Simulatsiooni kood">
+            <div style={panelTitleStyle}>Liitu koodiga</div>
+            <Field label="Sisesta kood">
               <input
                 value={joinCode}
                 onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                placeholder="VJ-4821"
+                placeholder="OPIL-9135"
                 style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: 3 }}
               />
             </Field>
             <Field label="Kuvatav nimi">
               <input
-                value={joinRole === 'facilitator' ? teacherName : studentName}
-                onChange={(event) => (joinRole === 'facilitator' ? setTeacherName(event.target.value) : setStudentName(event.target.value))}
+                value={joinName}
+                onChange={(event) => setJoinName(event.target.value)}
+                placeholder="Nimi või roll"
                 style={inputStyle}
               />
             </Field>
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-              <RoleButton label="Korrapidaja / juht" active={joinRole === 'commander'} onClick={() => setJoinRole('commander')} />
-              <RoleButton label="Õppejõud" active={joinRole === 'facilitator'} onClick={() => setJoinRole('facilitator')} />
+            <div style={roleNoteStyle}>
+              Kood määrab vaate automaatselt: õppejõu kood avab õppejõu vaate ja õpilase kood korrapidaja vaate.
             </div>
 
             <button style={primaryButtonStyle} disabled={!joinCode.trim() || joining} onClick={join}>
-              {joining ? 'Liitumine...' : 'Liitu simulatsiooniga'}
+              {joining ? 'Liitumine...' : 'Liitu koodiga'}
             </button>
             {(syncMessage || syncStatus === 'local' || syncStatus === 'supabase') && (
               <div style={noteStyle}>
@@ -115,12 +115,6 @@ const ModeButton: React.FC<{ title: string; text: string; active: boolean; onCli
   <button onClick={onClick} style={{ ...modeButtonStyle, borderColor: active ? 'var(--cyan)' : 'var(--border)' }}>
     <strong style={{ display: 'block', color: active ? 'var(--cyan)' : 'var(--text-primary)', marginBottom: 4 }}>{title}</strong>
     <span>{text}</span>
-  </button>
-);
-
-const RoleButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
-  <button onClick={onClick} style={{ ...roleButtonStyle, borderColor: active ? 'var(--cyan)' : 'var(--border)', color: active ? 'var(--cyan)' : 'var(--text-secondary)' }}>
-    {label}
   </button>
 );
 
@@ -201,15 +195,16 @@ const modeButtonStyle: React.CSSProperties = {
   lineHeight: 1.35,
 };
 
-const roleButtonStyle: React.CSSProperties = {
-  flex: 1,
+const roleNoteStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  padding: 8,
+  color: 'var(--text-secondary)',
+  padding: '8px 10px',
+  marginBottom: 18,
   fontFamily: 'var(--font-mono)',
-  letterSpacing: 1,
-  textTransform: 'uppercase',
+  fontSize: 11,
+  lineHeight: 1.35,
 };
 
 const primaryButtonStyle: React.CSSProperties = {

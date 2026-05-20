@@ -5,6 +5,8 @@ export interface Simulation {
   id: string;
   name: string;
   joinCode: string;
+  teacherCode?: string;
+  studentCode?: string;
   status: SimulationStatus;
   setupMode: SetupMode;
   createdAt: string;

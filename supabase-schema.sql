@@ -1,6 +1,8 @@
 create table if not exists public.simulation_snapshots (
   id text primary key,
   join_code text not null unique,
+  teacher_code text unique,
+  student_code text unique,
   payload jsonb not null,
   updated_at timestamptz not null default now()
 );
@@ -22,3 +24,9 @@ with check (true);
 
 create index if not exists simulation_snapshots_join_code_idx
 on public.simulation_snapshots (join_code);
+
+create index if not exists simulation_snapshots_teacher_code_idx
+on public.simulation_snapshots (teacher_code);
+
+create index if not exists simulation_snapshots_student_code_idx
+on public.simulation_snapshots (student_code);
