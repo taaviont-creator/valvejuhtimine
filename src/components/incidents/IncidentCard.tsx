@@ -38,6 +38,7 @@ export const IncidentCard: React.FC<Props> = ({
   const color = severityColors[incident.severity];
   const escortCount = assigned.filter((officer) => officer.hasEscortPermission).length;
   const taserCount = assigned.filter((officer) => officer.hasTaserPermission).length;
+  const latestUpdate = incident.updates[incident.updates.length - 1];
 
   return (
     <div style={cardStyle(incident, color)}>
@@ -62,6 +63,12 @@ export const IncidentCard: React.FC<Props> = ({
           <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `Taser required ${taserCount}` : 'No taser req'} />
           {incident.externalEscortRequired && <Tag color="#ff99cc" text="External escort" />}
         </div>
+
+        {latestUpdate && (
+          <div style={latestUpdateStyle}>
+            Latest update: {latestUpdate.text}
+          </div>
+        )}
       </div>
 
       {expanded && (
@@ -176,6 +183,17 @@ const updateStyle: React.CSSProperties = {
   borderRadius: 3,
   padding: '4px 8px',
   marginBottom: 3,
+};
+
+const latestUpdateStyle: React.CSSProperties = {
+  marginTop: 7,
+  padding: '5px 7px',
+  background: 'rgba(255,170,0,0.06)',
+  border: '1px solid rgba(255,170,0,0.24)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--amber)',
+  fontSize: 11,
+  lineHeight: 1.35,
 };
 
 const miniLabelStyle: React.CSSProperties = {

@@ -64,3 +64,15 @@
 [2m17:40:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentCard.tsx[22m
 [2m17:40:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/components/incidents/IncidentCard.tsx, /src/components/log/DecisionLog.tsx, /src/components/map/BusCard.tsx, /src/components/map/BuildingCard.tsx[22m
 [2m17:41:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/officers/OfficerDetailPanel.tsx[22m
+[2m17:53:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentForm.tsx[22m
+[2m17:53:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentForm.tsx[22m
+[2m17:53:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/EscalateForm.tsx[22m
+[2m17:54:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/EscalateForm.tsx[22m
+[2m17:54:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/RightSidebar.tsx[22m
+[2m17:54:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/app/App.tsx[22m
+[2m17:54:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/app/App.tsx[22m
+[2m17:55:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentCard.tsx[22m
+[2m17:55:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/EscalateForm.tsx[22m
+[2m17:55:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/incidents/IncidentForm.tsx[22m
+[2m17:56:35[22m [36m[1m[vite][22m[39m [32m.env.local changed, restarting server...[39m
+[2m17:56:35[22m [36m[1m[vite][22m[39m server restarted.

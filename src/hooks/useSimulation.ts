@@ -472,7 +472,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents: [...current.incidents, incident] },
           'teacher',
-          `Incident created: "${title}" at ${building.name}`
+          `Incident activated: "${title}" at ${building.name}`
         );
       });
     },

@@ -13,6 +13,7 @@ interface Props {
   warnings: Warning[];
   decisionLog: DecisionLogEntry[];
   isFacilitator: boolean;
+  onCreateIncident: () => void;
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
 }
@@ -24,6 +25,7 @@ export const RightSidebar: React.FC<Props> = ({
   warnings,
   decisionLog,
   isFacilitator,
+  onCreateIncident,
   onEscalate,
   onCloseIncident,
 }) => {
@@ -61,6 +63,11 @@ export const RightSidebar: React.FC<Props> = ({
       <div style={contentStyle}>
         {tab === 'incidents' && (
           <>
+            {isFacilitator && (
+              <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
+                Template incident
+              </button>
+            )}
             {incidents.length === 0 && <div style={emptyStyle}>No incidents yet</div>}
             {activeIncidents.map((incident) => (
               <IncidentCard
@@ -191,5 +198,17 @@ const closedLabelStyle: React.CSSProperties = {
   letterSpacing: 1,
   marginTop: 8,
   marginBottom: 2,
+  textTransform: 'uppercase',
+};
+
+const createIncidentButtonStyle: React.CSSProperties = {
+  minHeight: 34,
+  background: 'rgba(0,212,255,0.1)',
+  border: '1px solid var(--cyan-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  letterSpacing: 0.8,
   textTransform: 'uppercase',
 };
