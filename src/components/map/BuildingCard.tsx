@@ -66,14 +66,22 @@ export const BuildingCard: React.FC<Props> = ({
       <div style={{ ...buildingNameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{building.name}</div>
 
       <div style={countRowStyle}>
-        <span style={{ ...countStyle, color: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : 'var(--green)' }}>{officerCount}</span>
-        <span style={minimumStyle}>min {building.minimumStaff}</span>
+        <span style={{ ...countStyle, color: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : 'var(--green)' }}>
+          {officerCount}<span style={slashStyle}> / {building.minimumStaff}</span>
+        </span>
+        <span style={minimumStyle}>staffed / min</span>
       </div>
 
       <div style={statusRowStyle}>
         <span style={{ ...dotStyle, background: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : activeIncidents.length > 0 ? 'var(--cyan)' : 'var(--green)' }} />
         <span style={{ ...statusTextStyle, color: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : activeIncidents.length > 0 ? 'var(--cyan)' : 'var(--green)' }}>{status}</span>
       </div>
+
+      {activeIncidents.length > 0 && (
+        <div style={activeIncidentTextStyle}>
+          Active: {activeIncidents.map((incident) => incident.title).join(', ')}
+        </div>
+      )}
 
       {localOfficers.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 7 }}>
@@ -85,7 +93,7 @@ export const BuildingCard: React.FC<Props> = ({
         </div>
       )}
 
-      {isFacilitator && selected && !building.isResourcePool && (
+      {isFacilitator && !building.isResourcePool && (
         <button
           onClick={(event) => {
             event.stopPropagation();
@@ -161,10 +169,17 @@ const countStyle: React.CSSProperties = {
   lineHeight: 1,
 };
 
+const slashStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--text-muted)',
+  fontWeight: 400,
+};
+
 const minimumStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 11,
+  fontSize: 9,
   color: 'var(--text-muted)',
+  textTransform: 'uppercase',
 };
 
 const statusRowStyle: React.CSSProperties = {
@@ -195,6 +210,15 @@ const officerChipStyle = (officer: Officer): React.CSSProperties => ({
   padding: '1px 4px',
   borderRadius: 3,
 });
+
+const activeIncidentTextStyle: React.CSSProperties = {
+  marginTop: 6,
+  paddingTop: 5,
+  borderTop: '1px solid var(--border)',
+  color: 'var(--cyan)',
+  fontSize: 10,
+  lineHeight: 1.25,
+};
 
 const createButtonStyle: React.CSSProperties = {
   marginTop: 8,

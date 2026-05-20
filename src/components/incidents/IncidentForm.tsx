@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { IncidentSeverity } from '../../models';
+import { INCIDENT_TEMPLATES, IncidentTemplate } from '../../data/incidentTemplates';
+import { Building, IncidentSeverity } from '../../models';
 
 interface Props {
-  buildingName: string;
+  buildings: Building[];
+  initialBuildingId: string;
   onSubmit: (
+    buildingId: string,
     title: string,
     description: string,
     severity: IncidentSeverity,
@@ -15,7 +18,10 @@ interface Props {
   onCancel: () => void;
 }
 
-export const IncidentForm: React.FC<Props> = ({ buildingName, onSubmit, onCancel }) => {
+export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, onSubmit, onCancel }) => {
+  const selectableBuildings = buildings.filter((building) => !building.isResourcePool);
+  const [buildingId, setBuildingId] = useState(initialBuildingId || selectableBuildings[0]?.id || '');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('manual');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>('medium');
@@ -24,23 +30,55 @@ export const IncidentForm: React.FC<Props> = ({ buildingName, onSubmit, onCancel
   const [requiresTaser, setRequiresTaser] = useState(false);
   const [externalEscortRequired, setExternalEscortRequired] = useState(false);
 
+  const applyTemplate = (template: IncidentTemplate) => {
+    setSelectedTemplateId(template.id);
+    setTitle(template.title);
+    setDescription(template.description);
+    setRequiredOfficers(template.requiredOfficers);
+    setRequiresEscort(template.requiresEscortPermission);
+    setRequiresTaser(template.requiresTaserPermission);
+    setExternalEscortRequired(template.externalEscortRequired);
+    setSeverity(template.severity);
+  };
+
   const submit = () => {
-    if (!title.trim()) return;
-    onSubmit(title.trim(), description.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired);
+    if (!buildingId || !title.trim()) return;
+    onSubmit(buildingId, title.trim(), description.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired);
   };
 
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <div style={titleStyle}>Create incident</div>
-        <div style={metaStyle}>{buildingName}</div>
+        <div style={titleStyle}>Facilitator incident template</div>
+        <div style={metaStyle}>Select unit, choose template, edit details, activate</div>
+
+        <FormField label="Building / unit">
+          <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={inputStyle}>
+            {selectableBuildings.map((building) => (
+              <option key={building.id} value={building.id}>{building.name}</option>
+            ))}
+          </select>
+        </FormField>
+
+        <div style={templateGridStyle}>
+          {INCIDENT_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              onClick={() => applyTemplate(template)}
+              style={templateButtonStyle(selectedTemplateId === template.id)}
+            >
+              <strong>{template.title}</strong>
+              <span>{template.requiredOfficers} officers | {template.severity}</span>
+            </button>
+          ))}
+        </div>
 
         <FormField label="Title">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Fight, refusal, medical escort..." autoFocus style={inputStyle} />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Manual incident title..." autoFocus style={inputStyle} />
         </FormField>
 
         <FormField label="Description">
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
         </FormField>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 10 }}>
@@ -65,7 +103,9 @@ export const IncidentForm: React.FC<Props> = ({ buildingName, onSubmit, onCancel
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={submit} disabled={!title.trim()} style={{ ...primaryStyle, opacity: title.trim() ? 1 : 0.45 }}>Add incident</button>
+          <button onClick={submit} disabled={!title.trim() || !buildingId} style={{ ...primaryStyle, opacity: title.trim() && buildingId ? 1 : 0.45 }}>
+            Activate incident
+          </button>
           <button onClick={onCancel} style={secondaryStyle}>Cancel</button>
         </div>
       </div>
@@ -102,7 +142,9 @@ const modalStyle: React.CSSProperties = {
   border: '1px solid var(--border-bright)',
   borderRadius: 'var(--radius-md)',
   padding: 24,
-  width: 460,
+  width: 620,
+  maxHeight: '92vh',
+  overflowY: 'auto',
   boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
 };
 
@@ -121,6 +163,27 @@ const metaStyle: React.CSSProperties = {
   letterSpacing: 1,
   textTransform: 'uppercase',
 };
+
+const templateGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 7,
+  marginBottom: 14,
+};
+
+const templateButtonStyle = (active: boolean): React.CSSProperties => ({
+  minHeight: 58,
+  padding: '8px 10px',
+  background: active ? 'var(--bg-elevated)' : 'var(--bg-card)',
+  border: `1px solid ${active ? 'var(--cyan)' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-sm)',
+  color: active ? 'var(--cyan)' : 'var(--text-secondary)',
+  textAlign: 'left',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  fontSize: 11,
+});
 
 const labelStyle: React.CSSProperties = {
   display: 'block',

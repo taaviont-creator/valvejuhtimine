@@ -86,6 +86,10 @@ export const App: React.FC = () => {
           warnings={state.warnings}
           decisionLog={state.decisionLog}
           isFacilitator={isFacilitator}
+          onCreateIncident={() => {
+            const fallbackBuilding = state.buildings.find((building) => !building.isResourcePool)?.id ?? null;
+            setIncidentFormBuildingId(selectedBuildingId ?? fallbackBuilding);
+          }}
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
         />
@@ -93,9 +97,10 @@ export const App: React.FC = () => {
 
       {incidentFormBuildingId && (
         <IncidentForm
-          buildingName={state.buildings.find((building) => building.id === incidentFormBuildingId)?.name ?? ''}
-          onSubmit={(title, desc, sev, req, escort, taser, externalEscort) => {
-            sim.createIncident(incidentFormBuildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
+          buildings={state.buildings}
+          initialBuildingId={incidentFormBuildingId}
+          onSubmit={(buildingId, title, desc, sev, req, escort, taser, externalEscort) => {
+            sim.createIncident(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
             setIncidentFormBuildingId(null);
           }}
           onCancel={() => setIncidentFormBuildingId(null)}

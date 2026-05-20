@@ -5,14 +5,47 @@ const CHANNEL_NAME = 'prison-shift-simulation-sync';
 const TABLE_NAME = 'simulation_snapshots';
 
 type Listener = (snapshot: SimulationSnapshot) => void;
+export type SnapshotLoadResult = {
+  snapshot: SimulationSnapshot | null;
+  mode: 'supabase' | 'local';
+  message?: string;
+};
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, '');
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabaseUrl = cleanEnvValue(import.meta.env.VITE_SUPABASE_URL)?.replace(/\/$/, '');
+const supabaseKey = cleanEnvValue(import.meta.env.VITE_SUPABASE_ANON_KEY);
+const unsafeKeyReason = supabaseKey && looksLikeServiceRoleKey(supabaseKey)
+  ? 'Refusing to use a service_role key in browser code. Use the Supabase anon public key.'
+  : undefined;
 
-export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseKey);
+export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseKey && !unsafeKeyReason);
+export const syncModeLabel = hasSupabaseConfig ? 'Supabase sync enabled' : 'Local demo mode';
+export const supabaseConfigWarning = unsafeKeyReason;
+
+function cleanEnvValue(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function looksLikeServiceRoleKey(key: string): boolean {
+  try {
+    const [, payload] = key.split('.');
+    if (!payload) return false;
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    const decoded = JSON.parse(atob(paddedPayload)) as { role?: string };
+    return decoded.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
 
 function snapshotKey(id: string) {
   return `prison-shift-simulation:${id}`;
+}
+
+export function normalizeJoinCode(joinCode: string): string {
+  return joinCode.trim().toUpperCase();
 }
 
 function headers(extra?: HeadersInit): HeadersInit {
@@ -39,7 +72,7 @@ function writeIndex(index: Record<string, string>) {
 function saveLocal(snapshot: SimulationSnapshot) {
   localStorage.setItem(snapshotKey(snapshot.simulation.id), JSON.stringify(snapshot));
   const index = readIndex();
-  index[snapshot.simulation.joinCode.toUpperCase()] = snapshot.simulation.id;
+  index[normalizeJoinCode(snapshot.simulation.joinCode)] = snapshot.simulation.id;
   writeIndex(index);
 }
 
@@ -53,16 +86,16 @@ function getLocalById(simulationId: string): SimulationSnapshot | null {
 }
 
 function getLocalByJoinCode(joinCode: string): SimulationSnapshot | null {
-  const id = readIndex()[joinCode.toUpperCase()];
+  const id = readIndex()[normalizeJoinCode(joinCode)];
   return id ? getLocalById(id) : null;
 }
 
 async function saveRemote(snapshot: SimulationSnapshot) {
   if (!hasSupabaseConfig) return;
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?on_conflict=id`, {
     method: 'POST',
-    headers: headers({ Prefer: 'resolution=merge-duplicates' }),
+    headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
     body: JSON.stringify({
       id: snapshot.simulation.id,
       join_code: snapshot.simulation.joinCode,
@@ -72,20 +105,20 @@ async function saveRemote(snapshot: SimulationSnapshot) {
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase save failed: ${response.status}`);
+    throw new Error(await describeSupabaseError(response, 'save'));
   }
 }
 
 async function getRemoteByJoinCode(joinCode: string): Promise<SimulationSnapshot | null> {
   if (!hasSupabaseConfig) return null;
 
-  const query = `join_code=eq.${encodeURIComponent(joinCode.toUpperCase())}&select=payload&limit=1`;
+  const query = `select=payload&join_code=eq.${encodeURIComponent(normalizeJoinCode(joinCode))}&limit=1`;
   const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?${query}`, {
     headers: headers(),
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase load failed: ${response.status}`);
+    throw new Error(await describeSupabaseError(response, 'load by join code'));
   }
 
   const rows = (await response.json()) as Array<{ payload: SimulationSnapshot }>;
@@ -101,7 +134,7 @@ async function getRemoteById(simulationId: string): Promise<SimulationSnapshot |
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase load failed: ${response.status}`);
+    throw new Error(await describeSupabaseError(response, 'load by simulation id'));
   }
 
   const rows = (await response.json()) as Array<{ payload: SimulationSnapshot }>;
@@ -118,21 +151,46 @@ export async function saveSnapshot(snapshot: SimulationSnapshot): Promise<'supab
   }
 
   if (hasSupabaseConfig) {
-    await saveRemote(snapshot);
-    return 'supabase';
+    try {
+      await saveRemote(snapshot);
+      return 'supabase';
+    } catch {
+      return 'local';
+    }
   }
 
   return 'local';
 }
 
-export async function loadSnapshotByJoinCode(joinCode: string): Promise<SimulationSnapshot | null> {
-  const normalized = joinCode.trim().toUpperCase();
-  const remote = await getRemoteByJoinCode(normalized);
-  if (remote) {
-    saveLocal(remote);
-    return remote;
+export async function getSimulationByJoinCode(joinCode: string): Promise<SnapshotLoadResult> {
+  const normalized = normalizeJoinCode(joinCode);
+  let message: string | undefined;
+
+  if (!normalized) {
+    return { snapshot: null, mode: hasSupabaseConfig ? 'supabase' : 'local' };
   }
-  return getLocalByJoinCode(normalized);
+
+  if (hasSupabaseConfig) {
+    try {
+      const remote = await getRemoteByJoinCode(normalized);
+      if (remote) {
+        saveLocal(remote);
+        return { snapshot: remote, mode: 'supabase' };
+      }
+    } catch {
+      message = 'Supabase connection failed, using local mode';
+    }
+  }
+
+  return {
+    snapshot: getLocalByJoinCode(normalized),
+    mode: 'local',
+    message,
+  };
+}
+
+export async function loadSnapshotByJoinCode(joinCode: string): Promise<SimulationSnapshot | null> {
+  return (await getSimulationByJoinCode(joinCode)).snapshot;
 }
 
 export function loadLocalSnapshotById(simulationId: string): SimulationSnapshot | null {
@@ -184,4 +242,17 @@ export function subscribeToSimulation(
     window.removeEventListener('storage', onStorage);
     channel?.close();
   };
+}
+
+async function describeSupabaseError(response: Response, operation: string): Promise<string> {
+  let detail = '';
+  try {
+    const body = await response.json() as { message?: string; details?: string; hint?: string };
+    detail = body.message ?? body.details ?? body.hint ?? '';
+  } catch {
+    detail = await response.text().catch(() => '');
+  }
+
+  const suffix = detail ? `: ${detail}` : '';
+  return `Supabase ${operation} failed (${response.status})${suffix}`;
 }

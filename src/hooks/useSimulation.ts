@@ -26,10 +26,12 @@ import {
 } from '../data/demoData';
 import { calculateWarnings } from '../lib/calculations';
 import {
+  getSimulationByJoinCode,
   hasSupabaseConfig,
   loadLocalSnapshotById,
-  loadSnapshotByJoinCode,
+  normalizeJoinCode,
   saveSnapshot,
+  supabaseConfigWarning,
   subscribeToSimulation,
 } from '../lib/sharedSimulationStore';
 
@@ -38,8 +40,7 @@ function now() {
 }
 
 function generateJoinCode() {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  return `VJ-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function actorForRole(role: AppRole | null): LogActor {
@@ -59,7 +60,12 @@ function emptyState(): AppState {
     decisionLog: [],
     warnings: [],
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
+    syncMessage: supabaseConfigWarning,
   };
+}
+
+function localSyncMessage() {
+  return supabaseConfigWarning ?? (hasSupabaseConfig ? 'Supabase connection failed, using local mode' : undefined);
 }
 
 function toSnapshot(state: AppState): SimulationSnapshot | null {
@@ -81,7 +87,7 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
     ...snapshot,
     warnings: calculateWarnings(snapshot.buildings, snapshot.officers, snapshot.incidents, snapshot.buses),
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
-    syncMessage: undefined,
+    syncMessage: supabaseConfigWarning,
   };
 }
 
@@ -142,7 +148,7 @@ export function useSimulation() {
         setState((current) => ({
           ...current,
           syncStatus: mode,
-          syncMessage: undefined,
+          syncMessage: mode === 'local' ? localSyncMessage() : undefined,
         }));
       })
       .catch((error) => {
@@ -215,9 +221,20 @@ export function useSimulation() {
     async (joinCode: string, role: AppRole, displayName: string) => {
       setState((current) => ({ ...current, syncStatus: 'loading', syncMessage: 'Joining simulation...' }));
       try {
-        const snapshot = await loadSnapshotByJoinCode(joinCode);
+        const normalizedJoinCode = normalizeJoinCode(joinCode);
+        if (!normalizedJoinCode) {
+          setState((current) => ({ ...current, syncStatus: hasSupabaseConfig ? 'supabase' : 'local', syncMessage: 'Simulation code not found' }));
+          return false;
+        }
+
+        const result = await getSimulationByJoinCode(normalizedJoinCode);
+        const snapshot = result.snapshot;
         if (!snapshot) {
-          setState((current) => ({ ...current, syncStatus: 'error', syncMessage: 'Simulation code not found' }));
+          setState((current) => ({
+            ...current,
+            syncStatus: result.mode,
+            syncMessage: result.message ?? 'Simulation code not found',
+          }));
           return false;
         }
 
@@ -234,6 +251,8 @@ export function useSimulation() {
           ...base,
           role,
           participant,
+          syncStatus: result.mode,
+          syncMessage: result.message,
           participants: [...snapshot.participants, participant],
           decisionLog: [
             logEntry(snapshot.simulation.id, role === 'facilitator' ? 'teacher' : 'student', `${participant.displayName} joined simulation`),
@@ -249,7 +268,7 @@ export function useSimulation() {
         setState((current) => ({
           ...current,
           syncStatus: 'error',
-          syncMessage: error instanceof Error ? error.message : 'Join failed',
+          syncMessage: error instanceof Error ? error.message : 'Unable to join simulation',
         }));
         return false;
       }
@@ -453,7 +472,7 @@ export function useSimulation() {
         return appendLog(
           { ...current, incidents: [...current.incidents, incident] },
           'teacher',
-          `Incident created: "${title}" at ${building.name}`
+          `Incident activated: "${title}" at ${building.name}`
         );
       });
     },

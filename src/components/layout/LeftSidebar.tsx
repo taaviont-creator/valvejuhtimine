@@ -79,7 +79,7 @@ export const LeftSidebar: React.FC<Props> = ({
         </div>
       )}
 
-      {role === 'facilitator' && (
+      {role === 'facilitator' && simulation.status === 'setup' && (
         <div style={setupShellStyle}>
           <button style={setupToggleStyle} onClick={() => setSetupOpen((value) => !value)}>
             Setup controls {setupOpen ? '-' : '+'}

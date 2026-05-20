@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ESCALATION_TEMPLATES, EscalationTemplate } from '../../data/incidentTemplates';
 import { Incident, IncidentSeverity } from '../../models';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) => {
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [text, setText] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>(incident.severity);
   const [requiredOfficers, setRequiredOfficers] = useState(incident.requiredOfficers);
@@ -22,11 +24,33 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
   const [requiresTaser, setRequiresTaser] = useState(incident.requiresTaserPermission);
   const [externalEscortRequired, setExternalEscortRequired] = useState(incident.externalEscortRequired);
 
+  const applyTemplate = (template: EscalationTemplate) => {
+    setSelectedTemplateId(template.id);
+    setText(template.text);
+    setSeverity(template.severity ?? severity);
+    setRequiredOfficers(template.requiredOfficers ?? requiredOfficers);
+    setRequiresEscort(template.requiresEscortPermission ?? requiresEscort);
+    setRequiresTaser(template.requiresTaserPermission ?? requiresTaser);
+    setExternalEscortRequired(template.externalEscortRequired ?? externalEscortRequired);
+  };
+
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={titleStyle}>Escalate incident</div>
         <div style={metaStyle}>{incident.title}</div>
+
+        <div style={templateGridStyle}>
+          {ESCALATION_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              onClick={() => applyTemplate(template)}
+              style={templateButtonStyle(selectedTemplateId === template.id)}
+            >
+              {template.text}
+            </button>
+          ))}
+        </div>
 
         <label style={labelStyle}>Update/comment</label>
         <textarea value={text} onChange={(event) => setText(event.target.value)} rows={3} autoFocus style={{ ...inputStyle, resize: 'vertical', marginBottom: 12 }} />
@@ -57,7 +81,7 @@ export const EscalateForm: React.FC<Props> = ({ incident, onSubmit, onCancel }) 
             disabled={!text.trim()}
             style={{ ...primaryStyle, opacity: text.trim() ? 1 : 0.45 }}
           >
-            Escalate
+            Save escalation
           </button>
           <button onClick={onCancel} style={secondaryStyle}>Cancel</button>
         </div>
@@ -95,7 +119,9 @@ const modalStyle: React.CSSProperties = {
   border: '1px solid var(--red)',
   borderRadius: 'var(--radius-md)',
   padding: 24,
-  width: 460,
+  width: 620,
+  maxHeight: '92vh',
+  overflowY: 'auto',
   boxShadow: '0 20px 60px rgba(255,51,85,0.2)',
 };
 
@@ -114,6 +140,25 @@ const metaStyle: React.CSSProperties = {
   letterSpacing: 1,
   textTransform: 'uppercase',
 };
+
+const templateGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 7,
+  marginBottom: 14,
+};
+
+const templateButtonStyle = (active: boolean): React.CSSProperties => ({
+  minHeight: 44,
+  padding: '8px 10px',
+  background: active ? 'var(--bg-elevated)' : 'var(--bg-card)',
+  border: `1px solid ${active ? 'var(--red)' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-sm)',
+  color: active ? 'var(--red)' : 'var(--text-secondary)',
+  textAlign: 'left',
+  fontSize: 11,
+  lineHeight: 1.25,
+});
 
 const labelStyle: React.CSSProperties = {
   display: 'block',

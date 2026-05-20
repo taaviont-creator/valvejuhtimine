@@ -13,6 +13,7 @@ interface Props {
   warnings: Warning[];
   decisionLog: DecisionLogEntry[];
   isFacilitator: boolean;
+  onCreateIncident: () => void;
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
 }
@@ -24,15 +25,33 @@ export const RightSidebar: React.FC<Props> = ({
   warnings,
   decisionLog,
   isFacilitator,
+  onCreateIncident,
   onEscalate,
   onCloseIncident,
 }) => {
   const [tab, setTab] = useState<Tab>('incidents');
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const closedIncidents = incidents.filter((incident) => incident.status === 'closed');
+  const latestAction = decisionLog.find((entry) => entry.actor !== 'system') ?? decisionLog[0];
 
   return (
     <div style={sidebarStyle}>
+      <div style={statusPanelStyle}>
+        <div style={panelLabelStyle}>{isFacilitator ? 'Student activity' : 'Situation status'}</div>
+        {latestAction ? (
+          <div style={latestActionStyle}>
+            <strong>{latestAction.actor}</strong> {latestAction.text}
+          </div>
+        ) : (
+          <div style={mutedTextStyle}>No actions logged yet</div>
+        )}
+        {warnings.length > 0 && (
+          <div style={warningSummaryStyle}>
+            {warnings.length} active warning{warnings.length === 1 ? '' : 's'} - open Warnings for details
+          </div>
+        )}
+      </div>
+
       <div style={tabsStyle}>
         {(['incidents', 'warnings', 'log'] as Tab[]).map((item) => (
           <button key={item} onClick={() => setTab(item)} style={tabStyle(tab === item)}>
@@ -44,6 +63,11 @@ export const RightSidebar: React.FC<Props> = ({
       <div style={contentStyle}>
         {tab === 'incidents' && (
           <>
+            {isFacilitator && (
+              <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
+                Template incident
+              </button>
+            )}
             {incidents.length === 0 && <div style={emptyStyle}>No incidents yet</div>}
             {activeIncidents.map((incident) => (
               <IncidentCard
@@ -89,6 +113,49 @@ const sidebarStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+const statusPanelStyle: React.CSSProperties = {
+  padding: 8,
+  borderBottom: '1px solid var(--border)',
+  background: 'var(--bg-panel)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
+
+const panelLabelStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  color: 'var(--text-muted)',
+  letterSpacing: 1.2,
+  textTransform: 'uppercase',
+};
+
+const latestActionStyle: React.CSSProperties = {
+  padding: '7px 8px',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  fontSize: 11,
+  lineHeight: 1.35,
+};
+
+const mutedTextStyle: React.CSSProperties = {
+  color: 'var(--text-muted)',
+  fontSize: 11,
+};
+
+const warningSummaryStyle: React.CSSProperties = {
+  padding: '6px 8px',
+  background: 'rgba(255,51,85,0.08)',
+  border: '1px solid rgba(255,51,85,0.35)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--red)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  lineHeight: 1.3,
+};
+
 const tabsStyle: React.CSSProperties = {
   display: 'flex',
   borderBottom: '1px solid var(--border)',
@@ -131,5 +198,17 @@ const closedLabelStyle: React.CSSProperties = {
   letterSpacing: 1,
   marginTop: 8,
   marginBottom: 2,
+  textTransform: 'uppercase',
+};
+
+const createIncidentButtonStyle: React.CSSProperties = {
+  minHeight: 34,
+  background: 'rgba(0,212,255,0.1)',
+  border: '1px solid var(--cyan-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  letterSpacing: 0.8,
   textTransform: 'uppercase',
 };
