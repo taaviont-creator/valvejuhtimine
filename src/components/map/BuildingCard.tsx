@@ -181,19 +181,19 @@ const cardStyle = (building: Building, borderColor: string, selected: boolean, c
   width: building.isResourcePool ? 240 : 200,
   minHeight: 112,
   background: critical
-    ? 'rgba(255,51,85,0.06)'
+    ? 'rgba(185,67,77,0.08)'
     : hasIncident
-    ? 'rgba(0,212,255,0.05)'
+    ? 'rgba(34,121,157,0.07)'
     : belowMin
-    ? 'rgba(255,170,0,0.05)'
+    ? 'rgba(166,111,31,0.08)'
     : building.isResourcePool
-    ? 'rgba(0,255,136,0.04)'
+    ? 'rgba(39,122,87,0.06)'
     : 'var(--bg-card)',
   border: `1px solid ${borderColor}`,
   borderRadius: 'var(--radius-md)',
-  padding: '10px 12px',
+  padding: '12px 13px',
   cursor: 'pointer',
-  boxShadow: selected ? `0 0 16px ${borderColor}44` : 'var(--shadow-card)',
+  boxShadow: selected ? 'var(--shadow-glow)' : 'var(--shadow-card)',
   userSelect: 'none',
 });
 
@@ -202,10 +202,10 @@ const incidentBadgeStyle = (escalated: boolean): React.CSSProperties => ({
   top: -8,
   right: 8,
   background: escalated ? 'var(--red)' : 'var(--cyan)',
-  color: '#000',
+  color: '#fff',
   fontSize: 10,
   fontWeight: 700,
-  padding: '1px 6px',
+  padding: '2px 7px',
   borderRadius: 10,
   fontFamily: 'var(--font-mono)',
   letterSpacing: 0.5,
@@ -214,11 +214,11 @@ const incidentBadgeStyle = (escalated: boolean): React.CSSProperties => ({
 
 const buildingNameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: 15,
+  fontWeight: 700,
   letterSpacing: 0.2,
-  marginBottom: 7,
-  lineHeight: 1.2,
+  marginBottom: 8,
+  lineHeight: 1.25,
 };
 
 const countRowStyle: React.CSSProperties = {
@@ -230,7 +230,7 @@ const countRowStyle: React.CSSProperties = {
 
 const countStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 20,
+  fontSize: 22,
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -262,7 +262,7 @@ const dotStyle: React.CSSProperties = {
 
 const statusTextStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 10.5,
   letterSpacing: 0.5,
   textTransform: 'uppercase',
 };
@@ -275,10 +275,10 @@ const incidentSectionStyle: React.CSSProperties = {
 };
 
 const incidentGroupStyle: React.CSSProperties = {
-  padding: '6px 7px',
-  background: 'rgba(255,170,0,0.07)',
-  border: '1px solid rgba(255,170,0,0.45)',
-  borderLeft: '3px solid var(--amber)',
+  padding: '7px 8px',
+  background: 'rgba(166,111,31,0.08)',
+  border: '1px solid rgba(166,111,31,0.28)',
+  borderLeft: '3px solid var(--amber-dim)',
   borderRadius: 'var(--radius-sm)',
 };
 
@@ -291,8 +291,8 @@ const freeOfficerSectionStyle: React.CSSProperties = {
 const unavailableOfficerSectionStyle: React.CSSProperties = {
   marginTop: 7,
   padding: '6px 7px',
-  background: 'rgba(255,51,85,0.06)',
-  border: '1px solid rgba(255,51,85,0.35)',
+  background: 'rgba(185,67,77,0.07)',
+  border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 'var(--radius-sm)',
 };
 
@@ -300,7 +300,7 @@ const sectionLabelStyle: React.CSSProperties = {
   marginBottom: 4,
   color: 'var(--text-muted)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 8,
+  fontSize: 8.5,
   letterSpacing: 0.7,
   textTransform: 'uppercase',
 };

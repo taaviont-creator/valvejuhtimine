@@ -24,7 +24,7 @@ export const DecisionLog: React.FC<Props> = ({ entries }) => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {entries.map((entry) => (
         <div key={entry.id} style={entryStyle}>
           <span style={timeStyle}>{formatTime(entry.createdAt)}</span>
@@ -46,11 +46,12 @@ const emptyStyle: React.CSSProperties = {
 const entryStyle: React.CSSProperties = {
   display: 'flex',
   gap: 7,
-  padding: '5px 6px',
+  padding: '7px 8px',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--bg-card)',
-  fontSize: 11,
-  lineHeight: 1.35,
+  border: '1px solid var(--border)',
+  fontSize: 11.5,
+  lineHeight: 1.4,
 };
 
 const timeStyle: React.CSSProperties = {

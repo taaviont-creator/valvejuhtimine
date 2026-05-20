@@ -1,42 +1,42 @@
 /* styles/globals.css */
 :root {
-  --bg-base: #0a0e14;
-  --bg-panel: #0f1520;
-  --bg-card: #131c2b;
-  --bg-card-hover: #1a2535;
-  --bg-elevated: #1c2840;
+  --bg-base: #e9eef4;
+  --bg-panel: #f7f9fc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #eef4fb;
+  --bg-elevated: #edf3f9;
 
-  --border: #1e3050;
-  --border-bright: #2a4570;
+  --border: #d4dde8;
+  --border-bright: #b8c6d6;
 
-  --cyan: #00d4ff;
-  --cyan-dim: #0099bb;
-  --cyan-glow: rgba(0, 212, 255, 0.15);
+  --cyan: #22799d;
+  --cyan-dim: #6f9db6;
+  --cyan-glow: rgba(34, 121, 157, 0.12);
 
-  --green: #00ff88;
-  --green-dim: #00bb66;
+  --green: #277a57;
+  --green-dim: #7bad95;
 
-  --amber: #ffaa00;
-  --amber-dim: #cc8800;
+  --amber: #a66f1f;
+  --amber-dim: #c7a46f;
 
-  --red: #ff3355;
-  --red-dim: #cc2244;
+  --red: #b9434d;
+  --red-dim: #d28b91;
 
-  --text-primary: #e8f0ff;
-  --text-secondary: #7a9cc0;
-  --text-muted: #4a6080;
-  --text-mono: #a0c4e0;
+  --text-primary: #1e2936;
+  --text-secondary: #50657a;
+  --text-muted: #748296;
+  --text-mono: #40556b;
 
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'Barlow', sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
 
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 
-  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.12);
+  --shadow-card: 0 2px 8px rgba(31, 45, 61, 0.08);
+  --shadow-glow: 0 0 0 2px rgba(34, 121, 157, 0.10);
 }
 
 * {
@@ -56,7 +56,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 ::-webkit-scrollbar {
@@ -64,7 +64,7 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track { background: var(--bg-panel); }
-::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #b7c4d2; border-radius: 4px; }
 
 button {
   cursor: pointer;
@@ -103,12 +103,12 @@ input, select, textarea {
 .officer-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  min-height: 18px;
-  padding: 1px 5px;
+  gap: 4px;
+  min-height: 20px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.2px;
   cursor: grab;
@@ -119,26 +119,26 @@ input, select, textarea {
 }
 
 .officer-chip--free {
-  background: rgba(0, 212, 255, 0.08);
+  background: rgba(34, 121, 157, 0.10);
   border: 1px solid var(--cyan-dim);
   color: var(--cyan);
 }
 
 .officer-chip--incident {
-  background: rgba(255, 170, 0, 0.12);
-  border: 1px solid var(--amber);
+  background: rgba(166, 111, 31, 0.12);
+  border: 1px solid var(--amber-dim);
   color: var(--amber);
 }
 
 .officer-chip--escort {
-  background: rgba(255, 153, 204, 0.12);
-  border: 1px solid #ff99cc;
-  color: #ff99cc;
+  background: rgba(132, 93, 155, 0.12);
+  border: 1px solid #9a7bad;
+  color: #73558a;
 }
 
 .officer-chip--unavailable {
-  background: rgba(255, 51, 85, 0.12);
-  border: 1px solid var(--red);
+  background: rgba(185, 67, 77, 0.12);
+  border: 1px solid var(--red-dim);
   color: var(--red);
 }
 
@@ -159,7 +159,7 @@ input, select, textarea {
 .role-badge--lead {
   background: var(--text-primary);
   border: 1px solid var(--text-primary);
-  color: var(--bg-base);
+  color: #ffffff;
 }
 
 .role-badge--guard {

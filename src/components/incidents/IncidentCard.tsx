@@ -5,7 +5,7 @@ import { getIncidentOfficers } from '../../lib/calculations';
 const severityColors: Record<string, string> = {
   low: 'var(--green)',
   medium: 'var(--amber)',
-  high: '#ff7722',
+  high: '#9a6430',
   critical: 'var(--red)',
 };
 
@@ -147,12 +147,12 @@ export const IncidentCard: React.FC<Props> = ({
 const Tag: React.FC<{ color: string; text: string }> = ({ color, text }) => (
   <span style={{
     fontFamily: 'var(--font-mono)',
-    fontSize: 8,
-    padding: '1px 4px',
-    background: `${color}16`,
-    border: `1px solid ${color}`,
+    fontSize: 8.5,
+    padding: '2px 5px',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
     color,
-    borderRadius: 2,
+    borderRadius: 'var(--radius-sm)',
     textTransform: 'uppercase',
   }}>
     {text}
@@ -161,18 +161,19 @@ const Tag: React.FC<{ color: string; text: string }> = ({ color, text }) => (
 
 const cardStyle = (incident: Incident, color: string): React.CSSProperties => ({
   background: 'var(--bg-card)',
-  border: `1px solid ${incident.status === 'escalated' ? 'var(--red)' : incident.status === 'closed' ? 'var(--border)' : color}`,
-  borderLeft: `3px solid ${incident.status === 'closed' ? 'var(--text-muted)' : color}`,
+  border: `1px solid ${incident.status === 'escalated' ? 'var(--red-dim)' : incident.status === 'closed' ? 'var(--border)' : 'var(--border-bright)'}`,
+  borderLeft: `4px solid ${incident.status === 'closed' ? 'var(--text-muted)' : color}`,
   borderRadius: 'var(--radius-sm)',
-  padding: '8px 10px',
+  padding: '10px 11px',
   opacity: incident.status === 'closed' ? 0.55 : 1,
+  boxShadow: 'var(--shadow-card)',
 });
 
 const titleTextStyle = (closed: boolean): React.CSSProperties => ({
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: 14,
+  fontWeight: 700,
   color: closed ? 'var(--text-muted)' : 'var(--text-primary)',
-  lineHeight: 1.2,
+  lineHeight: 1.25,
 });
 
 const statusStyle: React.CSSProperties = {
@@ -184,8 +185,8 @@ const statusStyle: React.CSSProperties = {
 };
 
 const newBadgeStyle: React.CSSProperties = {
-  padding: '1px 5px',
-  background: 'rgba(0,255,136,0.12)',
+  padding: '2px 6px',
+  background: 'rgba(39,122,87,0.10)',
   border: '1px solid var(--green-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--green)',
@@ -207,14 +208,14 @@ const severityStyle: React.CSSProperties = {
 
 const locationStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 10.5,
   color: 'var(--text-muted)',
-  marginTop: 2,
+  marginTop: 4,
 };
 
 const resourceStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 10.5,
 };
 
 const descriptionStyle: React.CSSProperties = {
@@ -225,20 +226,20 @@ const descriptionStyle: React.CSSProperties = {
 };
 
 const updateStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 11.5,
   color: 'var(--amber)',
-  background: 'rgba(255,170,0,0.05)',
-  border: '1px solid rgba(255,170,0,0.2)',
-  borderRadius: 3,
-  padding: '4px 8px',
-  marginBottom: 3,
+  background: 'rgba(166,111,31,0.07)',
+  border: '1px solid rgba(166,111,31,0.20)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '6px 8px',
+  marginBottom: 4,
 };
 
 const assignedSummaryStyle: React.CSSProperties = {
   marginTop: 8,
-  padding: '6px 7px',
-  background: 'rgba(0,212,255,0.04)',
-  border: '1px solid rgba(0,212,255,0.16)',
+  padding: '7px 8px',
+  background: 'rgba(34,121,157,0.06)',
+  border: '1px solid rgba(34,121,157,0.18)',
   borderRadius: 'var(--radius-sm)',
 };
 
@@ -251,13 +252,13 @@ const requirementWarningStyle: React.CSSProperties = {
 
 const latestUpdateStyle: React.CSSProperties = {
   marginTop: 7,
-  padding: '5px 7px',
-  background: 'rgba(255,170,0,0.06)',
-  border: '1px solid rgba(255,170,0,0.24)',
+  padding: '7px 8px',
+  background: 'rgba(166,111,31,0.08)',
+  border: '1px solid rgba(166,111,31,0.22)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--amber)',
-  fontSize: 11,
-  lineHeight: 1.35,
+  fontSize: 11.5,
+  lineHeight: 1.4,
 };
 
 const miniLabelStyle: React.CSSProperties = {

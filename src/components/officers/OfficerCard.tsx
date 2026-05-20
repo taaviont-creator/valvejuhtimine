@@ -14,18 +14,18 @@ const statusColors: Record<string, string> = {
   available: 'var(--green)',
   in_building: 'var(--cyan)',
   on_incident: 'var(--amber)',
-  on_escort: '#ff99cc',
+  on_escort: '#73558a',
   busy: 'var(--amber)',
   unavailable: 'var(--red)',
 };
 
 const statusBackgrounds: Record<string, string> = {
-  available: 'rgba(0,255,136,0.1)',
-  in_building: 'rgba(0,212,255,0.1)',
-  on_incident: 'rgba(255,170,0,0.13)',
-  on_escort: 'rgba(255,153,204,0.13)',
-  busy: 'rgba(255,170,0,0.13)',
-  unavailable: 'rgba(255,51,85,0.12)',
+  available: 'rgba(39,122,87,0.10)',
+  in_building: 'rgba(34,121,157,0.10)',
+  on_incident: 'rgba(166,111,31,0.12)',
+  on_escort: 'rgba(115,85,138,0.12)',
+  busy: 'rgba(166,111,31,0.12)',
+  unavailable: 'rgba(185,67,77,0.12)',
 };
 
 const statusLabels: Record<string, string> = {
@@ -64,14 +64,14 @@ export const OfficerCard: React.FC<Props> = ({
     <div onClick={onClick} style={cardStyle(selected, color)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
-          <span style={{ ...nameStyle, color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc' }}>{officer.name}</span>
+          <span style={{ ...nameStyle, color: 'var(--text-primary)' }}>{officer.name}</span>
           <span style={genderStyle}>{officer.gender === 'male' ? 'M' : 'F'}</span>
           <span className={`role-badge ${isLead ? 'role-badge--lead' : 'role-badge--guard'}`}>{isLead ? 'VV' : 'V'}</span>
         </div>
         <span style={{ ...statusStyle, color, background: statusBackground, borderColor: color }}>{statusLabels[officer.status]}</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
         <Badge active={officer.hasEscortPermission} label="Saateõigus" color="var(--green)" />
         <Badge active={officer.hasTaserPermission} label="EŠR õigus" color="var(--amber)" />
       </div>
@@ -89,11 +89,11 @@ export const OfficerCard: React.FC<Props> = ({
 const Badge: React.FC<{ active: boolean; label: string; color: string }> = ({ active, label, color }) => (
   <span style={{
     fontFamily: 'var(--font-mono)',
-    fontSize: 8,
-    padding: '1px 5px',
-    borderRadius: 2,
-    background: active ? `${color}22` : 'transparent',
-    border: `1px solid ${active ? color : 'var(--border)'}`,
+    fontSize: 8.5,
+    padding: '2px 5px',
+    borderRadius: 'var(--radius-sm)',
+    background: active ? 'var(--bg-elevated)' : 'transparent',
+    border: `1px solid ${active ? 'var(--border-bright)' : 'var(--border)'}`,
     color: active ? color : 'var(--text-muted)',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -104,17 +104,17 @@ const Badge: React.FC<{ active: boolean; label: string; color: string }> = ({ ac
 
 const cardStyle = (selected: boolean, color: string): React.CSSProperties => ({
   background: selected ? 'var(--bg-elevated)' : 'var(--bg-card)',
-  border: `1px solid ${selected ? color : 'var(--border)'}`,
+  border: `1px solid ${selected ? 'var(--border-bright)' : 'var(--border)'}`,
   borderLeft: `3px solid ${color}`,
   borderRadius: 'var(--radius-sm)',
-  padding: '8px 10px',
+  padding: '10px 11px',
   cursor: 'pointer',
-  boxShadow: selected ? `0 0 10px ${color}22` : 'none',
+  boxShadow: selected ? 'var(--shadow-glow)' : 'var(--shadow-card)',
 });
 
 const nameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 14,
+  fontSize: 15,
   fontWeight: 700,
 };
 
@@ -135,10 +135,10 @@ const statusStyle: React.CSSProperties = {
 };
 
 const locationStyle: React.CSSProperties = {
-  marginTop: 5,
+  marginTop: 6,
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  color: 'var(--text-muted)',
+  fontSize: 10.5,
+  color: 'var(--text-secondary)',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',

@@ -27,7 +27,7 @@ export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onCli
   return (
     <div onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={dropOfficer} style={cardStyle(index, selected, hasWarning, ready)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 16 }}>BUSS</span>
+        <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>BUSS</span>
         <span style={{ ...nameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{bus.name}</span>
       </div>
 
@@ -73,7 +73,7 @@ const cardStyle = (index: number, selected: boolean, hasWarning: boolean, ready:
   background: selected ? 'var(--bg-elevated)' : 'var(--bg-card)',
   border: `1px solid ${hasWarning ? 'var(--amber)' : ready ? 'var(--green)' : selected ? 'var(--cyan-dim)' : 'var(--border)'}`,
   borderRadius: 'var(--radius-md)',
-  padding: '10px 12px',
+  padding: '12px 13px',
   cursor: 'pointer',
   boxShadow: 'var(--shadow-card)',
   userSelect: 'none',
@@ -81,8 +81,8 @@ const cardStyle = (index: number, selected: boolean, hasWarning: boolean, ready:
 
 const nameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 13,
-  fontWeight: 600,
+  fontSize: 15,
+  fontWeight: 700,
 };
 
 const countRowStyle: React.CSSProperties = {

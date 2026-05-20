@@ -223,7 +223,7 @@ const sidebarStyle: React.CSSProperties = {
 };
 
 const statusPanelStyle: React.CSSProperties = {
-  padding: 8,
+  padding: 10,
   borderBottom: '1px solid var(--border)',
   background: 'var(--bg-panel)',
   display: 'flex',
@@ -232,7 +232,7 @@ const statusPanelStyle: React.CSSProperties = {
 };
 
 const studentHeaderStyle: React.CSSProperties = {
-  padding: 10,
+  padding: 12,
   borderBottom: '1px solid var(--border)',
   background: 'var(--bg-panel)',
   display: 'flex',
@@ -259,13 +259,13 @@ const panelLabelStyle: React.CSSProperties = {
 };
 
 const latestActionStyle: React.CSSProperties = {
-  padding: '7px 8px',
+  padding: '9px 10px',
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-secondary)',
-  fontSize: 11,
-  lineHeight: 1.35,
+  fontSize: 12,
+  lineHeight: 1.45,
 };
 
 const mutedTextStyle: React.CSSProperties = {
@@ -274,9 +274,9 @@ const mutedTextStyle: React.CSSProperties = {
 };
 
 const warningSummaryStyle: React.CSSProperties = {
-  padding: '6px 8px',
-  background: 'rgba(255,51,85,0.08)',
-  border: '1px solid rgba(255,51,85,0.35)',
+  padding: '8px 10px',
+  background: 'rgba(185,67,77,0.08)',
+  border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--red)',
   fontFamily: 'var(--font-mono)',
@@ -292,8 +292,8 @@ const tabsStyle: React.CSSProperties = {
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
   flex: 1,
-  padding: '9px 4px',
-  background: 'none',
+  padding: '10px 4px',
+  background: active ? 'var(--bg-card)' : 'transparent',
   border: 'none',
   borderBottom: `2px solid ${active ? 'var(--cyan)' : 'transparent'}`,
   color: active ? 'var(--cyan)' : 'var(--text-muted)',
@@ -306,27 +306,27 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 const contentStyle: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  padding: 8,
+  padding: 10,
   display: 'flex',
   flexDirection: 'column',
-  gap: 5,
+  gap: 8,
 };
 
 const studentContentStyle: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  padding: 8,
+  padding: 10,
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
 };
 
 const studentSectionStyle = (prominent: boolean): React.CSSProperties => ({
-  border: `1px solid ${prominent ? 'rgba(255,51,85,0.45)' : 'var(--border)'}`,
+  border: `1px solid ${prominent ? 'rgba(185,67,77,0.28)' : 'var(--border)'}`,
   borderLeft: `3px solid ${prominent ? 'var(--red)' : 'var(--cyan-dim)'}`,
   borderRadius: 'var(--radius-sm)',
-  background: prominent ? 'rgba(255,51,85,0.045)' : 'rgba(255,255,255,0.012)',
-  padding: 7,
+  background: prominent ? 'rgba(185,67,77,0.055)' : 'var(--bg-card)',
+  padding: 9,
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
@@ -338,7 +338,7 @@ const studentSectionTitleStyle: React.CSSProperties = {
   alignItems: 'center',
   color: 'var(--cyan)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 10.5,
   letterSpacing: 1,
   textTransform: 'uppercase',
 };
@@ -362,7 +362,7 @@ const closedLabelStyle: React.CSSProperties = {
 
 const createIncidentButtonStyle: React.CSSProperties = {
   minHeight: 34,
-  background: 'rgba(0,212,255,0.1)',
+  background: 'rgba(34,121,157,0.09)',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',

@@ -173,12 +173,13 @@ const Tag: React.FC<{ text: string; color: string }> = ({ text, color }) => (
 const panelStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(255,255,255,0.015)',
+  background: 'var(--bg-card)',
   marginBottom: 8,
+  boxShadow: 'var(--shadow-card)',
 };
 
 const panelHeaderStyle: React.CSSProperties = {
-  padding: 8,
+  padding: 9,
   borderBottom: '1px solid var(--border)',
   display: 'grid',
   gridTemplateColumns: '1fr',
@@ -211,14 +212,14 @@ const incidentSelectStyle: React.CSSProperties = {
 const cardListStyle: React.CSSProperties = {
   maxHeight: 360,
   overflowY: 'auto',
-  padding: 6,
+  padding: 8,
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
 };
 
 const cardStyle = (status: PreparedInjectStatus): React.CSSProperties => ({
-  padding: 8,
+  padding: 9,
   background: 'var(--bg-card)',
   border: `1px solid ${status === 'activated' ? 'var(--green-dim)' : 'var(--border)'}`,
   borderLeft: `3px solid ${status === 'activated' ? 'var(--green)' : 'var(--cyan)'}`,
@@ -232,8 +233,8 @@ const cardTopStyle: React.CSSProperties = {
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.25,
+  fontSize: 12.5,
+  lineHeight: 1.3,
 };
 
 const statusStyle = (status: PreparedInjectStatus): React.CSSProperties => ({
@@ -254,8 +255,8 @@ const targetStyle: React.CSSProperties = {
 const descriptionStyle: React.CSSProperties = {
   marginTop: 5,
   color: 'var(--text-secondary)',
-  fontSize: 11,
-  lineHeight: 1.35,
+  fontSize: 11.5,
+  lineHeight: 1.4,
 };
 
 const tagRowStyle: React.CSSProperties = {
@@ -267,18 +268,18 @@ const tagRowStyle: React.CSSProperties = {
 
 const tagStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 8,
+  fontSize: 8.5,
   border: '1px solid var(--border)',
-  borderRadius: 2,
-  padding: '1px 4px',
+  borderRadius: 'var(--radius-sm)',
+  padding: '2px 5px',
   textTransform: 'uppercase',
 };
 
 const escalationTextStyle: React.CSSProperties = {
   marginTop: 6,
-  padding: '5px 6px',
-  background: 'rgba(255,170,0,0.06)',
-  border: '1px solid rgba(255,170,0,0.22)',
+  padding: '6px 7px',
+  background: 'rgba(166,111,31,0.07)',
+  border: '1px solid rgba(166,111,31,0.20)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--amber)',
   fontSize: 10,
@@ -295,7 +296,7 @@ const buttonRowStyle: React.CSSProperties = {
 const primaryButtonStyle: React.CSSProperties = {
   flex: '1 1 94px',
   minHeight: 28,
-  background: 'rgba(0,212,255,0.1)',
+  background: 'rgba(34,121,157,0.09)',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',

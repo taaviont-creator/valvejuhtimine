@@ -96,8 +96,8 @@ const gridStyle: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
   backgroundImage: `
-    linear-gradient(rgba(30,48,80,0.3) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30,48,80,0.3) 1px, transparent 1px)
+    linear-gradient(rgba(80,101,122,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80,101,122,0.12) 1px, transparent 1px)
   `,
   backgroundSize: '40px 40px',
   pointerEvents: 'none',
@@ -113,8 +113,8 @@ const mapAreaStyle: React.CSSProperties = {
 const sectionLabelStyle: React.CSSProperties = {
   position: 'absolute',
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 11,
   color: 'var(--text-muted)',
-  letterSpacing: 2,
+  letterSpacing: 1.4,
   textTransform: 'uppercase',
 };

@@ -44,20 +44,20 @@ export const WarningList: React.FC<Props> = ({ warnings }) => {
 };
 
 const okStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  background: 'rgba(0,255,136,0.04)',
-  border: '1px solid rgba(0,255,136,0.15)',
+  padding: '11px 12px',
+  background: 'rgba(39,122,87,0.07)',
+  border: '1px solid rgba(39,122,87,0.18)',
   borderRadius: 'var(--radius-sm)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 10.5,
   color: 'var(--green)',
   letterSpacing: 0.5,
 };
 
 const summaryStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  background: 'rgba(255,51,85,0.08)',
-  border: '1px solid rgba(255,51,85,0.35)',
+  padding: '9px 11px',
+  background: 'rgba(185,67,77,0.08)',
+  border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--red)',
   fontFamily: 'var(--font-mono)',
@@ -67,23 +67,24 @@ const summaryStyle: React.CSSProperties = {
 };
 
 const groupStyle = (color: string): React.CSSProperties => ({
-  border: `1px solid ${color}55`,
+  border: '1px solid var(--border)',
   borderLeft: `3px solid ${color}`,
   borderRadius: 'var(--radius-sm)',
-  padding: '7px 8px',
+  padding: '9px 10px',
   background: 'var(--bg-card)',
+  boxShadow: 'var(--shadow-card)',
 });
 
 const groupTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 9,
+  fontSize: 9.5,
   letterSpacing: 1,
   textTransform: 'uppercase',
   marginBottom: 5,
 };
 
 const warningStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   color: 'var(--text-primary)',
-  lineHeight: 1.4,
+  lineHeight: 1.45,
 };

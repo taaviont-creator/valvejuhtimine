@@ -285,13 +285,13 @@ const sidebarStyle: React.CSSProperties = {
 };
 
 const sectionHeaderStyle: React.CSSProperties = {
-  padding: '10px 12px 8px',
+  padding: '12px 14px 10px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   borderBottom: '1px solid var(--border)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 9,
+  fontSize: 10,
   color: 'var(--text-muted)',
   letterSpacing: 2,
   textTransform: 'uppercase',
@@ -300,26 +300,27 @@ const sectionHeaderStyle: React.CSSProperties = {
 const listStyle: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  padding: 8,
+  padding: 10,
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
+  gap: 10,
 };
 
 const officerGroupStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(255,255,255,0.015)',
-  padding: 6,
+  background: 'rgba(255,255,255,0.52)',
+  padding: 8,
+  boxShadow: 'var(--shadow-card)',
 };
 
 const groupTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  color: 'var(--cyan)',
+  fontSize: 10,
+  color: 'var(--text-primary)',
   letterSpacing: 1,
   textTransform: 'uppercase',
-  marginBottom: 6,
+  marginBottom: 7,
 };
 
 const roleGroupStyle: React.CSSProperties = {
@@ -328,7 +329,7 @@ const roleGroupStyle: React.CSSProperties = {
 
 const roleTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 8,
+  fontSize: 8.5,
   color: 'var(--text-muted)',
   letterSpacing: 1,
   textTransform: 'uppercase',
@@ -337,7 +338,7 @@ const roleTitleStyle: React.CSSProperties = {
 
 const detailStyle: React.CSSProperties = {
   borderTop: '1px solid var(--border)',
-  padding: 8,
+  padding: 10,
   overflowY: 'auto',
   maxHeight: '45%',
 };

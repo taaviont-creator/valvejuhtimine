@@ -236,15 +236,16 @@ const emptyStyle: React.CSSProperties = {
 const panelStyle: React.CSSProperties = {
   border: '1px solid var(--border-bright)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(0,212,255,0.025)',
+  background: 'var(--bg-card)',
   marginBottom: 8,
+  boxShadow: 'var(--shadow-card)',
 };
 
 const headerButtonStyle: React.CSSProperties = {
   width: '100%',
   minHeight: 34,
-  padding: '8px 10px',
-  background: 'var(--bg-card)',
+  padding: '9px 10px',
+  background: 'var(--bg-elevated)',
   border: 'none',
   borderBottom: '1px solid var(--border)',
   color: 'var(--cyan)',
@@ -263,7 +264,7 @@ const collapseStyle: React.CSSProperties = {
 const bodyStyle: React.CSSProperties = {
   maxHeight: 520,
   overflowY: 'auto',
-  padding: 7,
+  padding: 9,
   display: 'flex',
   flexDirection: 'column',
   gap: 7,
@@ -276,7 +277,7 @@ const resourceBarStyle: React.CSSProperties = {
 };
 
 const metricStyle: React.CSSProperties = {
-  padding: '5px 6px',
+  padding: '7px 8px',
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
@@ -310,11 +311,11 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 const smallCardStyle: React.CSSProperties = {
-  padding: 7,
+  padding: 8,
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  fontSize: 11,
+  fontSize: 11.5,
 };
 
 const incidentCardStyle = (escalated: boolean): React.CSSProperties => ({
@@ -353,9 +354,9 @@ const dangerTextStyle: React.CSSProperties = {
 
 const latestStyle: React.CSSProperties = {
   marginTop: 5,
-  padding: '5px 6px',
-  background: 'rgba(255,170,0,0.06)',
-  border: '1px solid rgba(255,170,0,0.22)',
+  padding: '6px 7px',
+  background: 'rgba(166,111,31,0.07)',
+  border: '1px solid rgba(166,111,31,0.20)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--amber)',
   fontSize: 10,
@@ -393,7 +394,7 @@ const miniPrimaryStyle: React.CSSProperties = {
   width: '100%',
   marginTop: 6,
   minHeight: 26,
-  background: 'rgba(0,212,255,0.1)',
+  background: 'rgba(34,121,157,0.09)',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',
@@ -458,7 +459,7 @@ const selectStyle: React.CSSProperties = {
 
 const dangerButtonStyle: React.CSSProperties = {
   minHeight: 27,
-  background: 'rgba(255,51,85,0.1)',
+  background: 'rgba(185,67,77,0.10)',
   border: '1px solid var(--red)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--red)',

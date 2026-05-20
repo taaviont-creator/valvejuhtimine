@@ -151,7 +151,7 @@ const modalStyle: React.CSSProperties = {
   width: 620,
   maxHeight: '92vh',
   overflowY: 'auto',
-  boxShadow: '0 20px 60px rgba(255,51,85,0.2)',
+  boxShadow: '0 18px 45px rgba(31,45,61,0.18)',
 };
 
 const titleStyle: React.CSSProperties = {
@@ -192,8 +192,8 @@ const templateButtonStyle = (active: boolean): React.CSSProperties => ({
 const injuryPanelStyle: React.CSSProperties = {
   marginBottom: 14,
   padding: 10,
-  background: 'rgba(255,51,85,0.07)',
-  border: '1px solid rgba(255,51,85,0.35)',
+  background: 'rgba(185,67,77,0.08)',
+  border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 'var(--radius-sm)',
 };
 

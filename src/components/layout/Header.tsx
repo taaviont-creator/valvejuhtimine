@@ -86,18 +86,18 @@ export const Header: React.FC<Props> = ({
 };
 
 const headerStyle: React.CSSProperties = {
-  height: 52,
+  minHeight: 56,
   background: 'var(--bg-panel)',
   borderBottom: '1px solid var(--border)',
   display: 'flex',
   alignItems: 'center',
-  padding: '0 12px',
+  padding: '0 14px',
   gap: 12,
   flexShrink: 0,
 };
 
 const ghostButtonStyle: React.CSSProperties = {
-  background: 'none',
+  background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-secondary)',
@@ -112,7 +112,7 @@ const primaryButtonStyle: React.CSSProperties = {
   ...ghostButtonStyle,
   background: 'var(--cyan)',
   borderColor: 'var(--cyan)',
-  color: '#001017',
+  color: '#ffffff',
   fontWeight: 700,
 };
 
@@ -139,7 +139,7 @@ const roleStyle = (role: AppRole): React.CSSProperties => ({
   letterSpacing: 1.5,
   padding: '4px 8px',
   borderRadius: 3,
-  background: role === 'facilitator' ? 'rgba(255,170,0,0.12)' : 'rgba(0,212,255,0.12)',
+  background: role === 'facilitator' ? 'rgba(166,111,31,0.10)' : 'rgba(34,121,157,0.10)',
   border: `1px solid ${role === 'facilitator' ? 'var(--amber-dim)' : 'var(--cyan-dim)'}`,
   color: role === 'facilitator' ? 'var(--amber)' : 'var(--cyan)',
   textTransform: 'uppercase',
@@ -150,7 +150,7 @@ const accessPanelStyle: React.CSSProperties = {
   gridTemplateColumns: '1fr 1fr',
   gap: '2px 8px',
   padding: '5px 8px',
-  background: 'rgba(0,212,255,0.1)',
+  background: 'rgba(34,121,157,0.08)',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',
@@ -186,8 +186,8 @@ const joinLinkStyle: React.CSSProperties = {
 
 const warningStyle: React.CSSProperties = {
   padding: '4px 9px',
-  background: 'rgba(255,51,85,0.1)',
-  border: '1px solid rgba(255,51,85,0.4)',
+  background: 'rgba(185,67,77,0.10)',
+  border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 3,
   color: 'var(--red)',
   fontFamily: 'var(--font-mono)',
