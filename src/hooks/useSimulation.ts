@@ -274,6 +274,29 @@ function snapshotWithEscalation(
   return toSnapshot(finalizeState(base, appendLog({ ...base, incidents }, 'teacher', logText)));
 }
 
+function resetSnapshot(snapshot: SimulationSnapshot, logText: string): SimulationSnapshot | null {
+  const base = withSnapshot(emptyState(), snapshot);
+  if (!base.simulation) return null;
+  const placeInPool = base.simulation.setupMode === 'student_places_officers';
+  return toSnapshot(
+    finalizeState(
+      base,
+      appendLog(
+        {
+          ...base,
+          simulation: { ...base.simulation, status: 'setup' },
+          buildings: createDefaultBuildings(base.simulation.id),
+          officers: createDefaultOfficers(base.simulation.id, placeInPool),
+          buses: createDefaultBuses(base.simulation.id),
+          incidents: [],
+        },
+        'teacher',
+        logText
+      )
+    )
+  );
+}
+
 function warningSignature(warning: Warning) {
   return `${warning.type}:${warning.relatedBuildingId ?? ''}:${warning.relatedIncidentId ?? ''}:${warning.relatedBusId ?? ''}`;
 }
@@ -671,10 +694,45 @@ export function useSimulation() {
           incidents: [],
         },
         'teacher',
-        'Simulatsioon lähtestati algolukorda'
+        'Õppejõud lähtestas simulatsiooni.'
       );
     });
   }, [commit]);
+
+  const resetClassroomGroup = useCallback(
+    async (simulationId: string) => {
+      const exercise = state.classroomExercise;
+      if (!exercise || state.role !== 'facilitator') return false;
+      const group = exercise.groups.find((item) => item.simulationId === simulationId);
+      const result = await loadSnapshotById(simulationId);
+      if (!group || !result.snapshot) return false;
+
+      const reset = resetSnapshot(
+        { ...result.snapshot, classroomExercise: exercise },
+        `Õppejõud lähtestas grupi: ${group.groupName}.`
+      );
+      if (!reset) return false;
+
+      await saveSnapshot(reset);
+      setState((current) => {
+        const nextSnapshots = current.classroomSnapshots.map((snapshot) =>
+          snapshot.simulation.id === simulationId ? reset : snapshot
+        );
+        const hasSnapshot = nextSnapshots.some((snapshot) => snapshot.simulation.id === simulationId);
+        const classroomSnapshots = hasSnapshot ? nextSnapshots : [...nextSnapshots, reset];
+        if (current.simulation?.id !== simulationId) {
+          return { ...current, classroomSnapshots };
+        }
+        return {
+          ...withSnapshot(current, reset),
+          classroomExercise: exercise,
+          classroomSnapshots,
+        };
+      });
+      return true;
+    },
+    [state.classroomExercise, state.role]
+  );
 
   const startSimulation = useCallback(() => {
     commit((current) => {
@@ -1220,6 +1278,7 @@ export function useSimulation() {
     leaveSimulation,
     openClassroomGroup,
     resetSimulation,
+    resetClassroomGroup,
     startSimulation,
     setSetupMode,
     moveOfficerToBuilding,

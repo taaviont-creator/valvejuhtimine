@@ -8,6 +8,7 @@ import { IncidentForm } from '../components/incidents/IncidentForm';
 import { EscalateForm } from '../components/incidents/EscalateForm';
 import { OverviewEscalationAction } from '../components/incidents/ScenarioOverviewPanel';
 import { ClassroomGroupOverview } from '../components/classroom/ClassroomGroupOverview';
+import { SharingToolsPanel } from '../components/sharing/SharingToolsPanel';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
@@ -205,6 +206,14 @@ export const App: React.FC = () => {
     );
     if (confirmed) sim.closeIncident(incidentId, `Õppejõud lõpetas sündmuse ülevaatest: ${incident.title}`);
   };
+  const resetCurrentSimulation = () => {
+    if (window.confirm('Kas oled kindel? See taastab simulatsiooni algseisu.')) {
+      sim.resetSimulation();
+    }
+  };
+  const resetClassroomGroup = (simulationId: string) => {
+    void sim.resetClassroomGroup(simulationId);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -217,8 +226,17 @@ export const App: React.FC = () => {
         syncMessage={state.syncMessage}
         onBack={sim.leaveSimulation}
         onStart={isFacilitator ? sim.startSimulation : undefined}
-        onReset={isFacilitator ? sim.resetSimulation : undefined}
+        onReset={isFacilitator && !state.classroomExercise ? resetCurrentSimulation : undefined}
       />
+
+      {isFacilitator && (
+        <SharingToolsPanel
+          simulation={state.simulation}
+          classroomExercise={state.classroomExercise}
+          onResetSimulation={resetCurrentSimulation}
+          onResetGroup={resetClassroomGroup}
+        />
+      )}
 
       {isFacilitator && state.classroomExercise && (
         <ClassroomGroupOverview
