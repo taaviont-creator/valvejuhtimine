@@ -6,6 +6,7 @@ import { PreparedInjectPanel } from '../incidents/PreparedInjectPanel';
 import { OverviewEscalationAction, ScenarioOverviewPanel } from '../incidents/ScenarioOverviewPanel';
 import { WarningList } from '../warnings/WarningList';
 import { DecisionLog } from '../log/DecisionLog';
+import { getIncidentOfficers } from '../../lib/calculations';
 
 type Tab = 'incidents' | 'warnings' | 'log';
 const actorLabels: Record<string, string> = {
@@ -64,6 +65,7 @@ export const RightSidebar: React.FC<Props> = ({
   onOverviewCloseIncident,
 }) => {
   const [tab, setTab] = useState<Tab>('incidents');
+  const [studentGuideOpen, setStudentGuideOpen] = useState(true);
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const closedIncidents = incidents.filter((incident) => incident.status === 'closed');
   const latestAction = decisionLog.find((entry) => entry.actor !== 'system') ?? decisionLog[0];
@@ -86,6 +88,14 @@ export const RightSidebar: React.FC<Props> = ({
         </div>
 
         <div style={studentContentStyle}>
+          <StudentGuidancePanel
+            open={studentGuideOpen}
+            onToggle={() => setStudentGuideOpen((value) => !value)}
+            activeIncidents={activeIncidents}
+            officers={officers}
+            warningCount={warnings.length}
+          />
+
           <StudentSection title="Aktiivsed sündmused" count={activeIncidents.length}>
             {activeIncidents.length === 0 ? (
               <div style={emptyStyle}>Aktiivseid sündmusi pole</div>
@@ -211,6 +221,47 @@ export const RightSidebar: React.FC<Props> = ({
         {tab === 'log' && <DecisionLog entries={decisionLog} />}
       </div>
     </div>
+  );
+};
+
+const StudentGuidancePanel: React.FC<{
+  open: boolean;
+  onToggle: () => void;
+  activeIncidents: Incident[];
+  officers: Officer[];
+  warningCount: number;
+}> = ({ open, onToggle, activeIncidents, officers, warningCount }) => {
+  const hasMissingIncidentResources = activeIncidents.some(
+    (incident) => getIncidentOfficers(incident, officers).length < incident.requiredOfficers
+  );
+  const nextHint =
+    activeIncidents.length === 0
+      ? 'Oota õppejõu järgmist sündmust.'
+      : hasMissingIncidentResources
+      ? 'Vali ametnik ja määra ta sündmusele.'
+      : warningCount > 0
+      ? 'Kontrolli hoiatusi enne järgmise ametniku suunamist.'
+      : 'Jälgi olukorda ja hoia üksuste miinimumkoosseisu.';
+
+  return (
+    <section style={guidanceStyle}>
+      <button onClick={onToggle} style={guidanceHeaderStyle}>
+        <span>Korrapidaja tegevus</span>
+        <span>{open ? 'Peida juhend' : 'Näita juhendit'}</span>
+      </button>
+      {open && (
+        <div style={guidanceBodyStyle}>
+          <ol style={guidanceListStyle}>
+            <li>Vaata aktiivset sündmust.</li>
+            <li>Vali sobiv ametnik kaardilt või nimekirjast.</li>
+            <li>Kontrolli õiguseid: saateõigus ja elektrišokirelva õigus.</li>
+            <li>Suuna ametnik sündmusele, üksusesse või saatebussile.</li>
+            <li>Jälgi hoiatusi ja üksuste miinimumkoosseisu.</li>
+          </ol>
+          <div style={guidanceHintStyle}>{nextHint}</div>
+        </div>
+      )}
+    </section>
   );
 };
 
@@ -340,6 +391,53 @@ const studentContentStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
+};
+
+const guidanceStyle: React.CSSProperties = {
+  border: '1px solid var(--cyan-dim)',
+  borderLeft: '3px solid var(--cyan)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'rgba(34,121,157,0.06)',
+  overflow: 'hidden',
+};
+
+const guidanceHeaderStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: 32,
+  padding: '8px 9px',
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 8,
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  letterSpacing: 1,
+  textTransform: 'uppercase',
+};
+
+const guidanceBodyStyle: React.CSSProperties = {
+  padding: '0 10px 10px',
+  color: 'var(--text-secondary)',
+  fontSize: 11.5,
+  lineHeight: 1.35,
+};
+
+const guidanceListStyle: React.CSSProperties = {
+  marginLeft: 16,
+  marginBottom: 8,
+};
+
+const guidanceHintStyle: React.CSSProperties = {
+  padding: '7px 8px',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--amber)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  lineHeight: 1.3,
 };
 
 const studentSectionStyle = (prominent: boolean): React.CSSProperties => ({

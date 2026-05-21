@@ -261,8 +261,11 @@ export const App: React.FC = () => {
           onAssignToBus={sim.assignOfficerToBus}
           onRelease={sim.releaseOfficer}
           onAddOfficer={sim.addOfficer}
+          onUpdateOfficer={sim.updateOfficer}
+          onRemoveOfficer={sim.removeOfficer}
           onUpdateBuildingMinimum={sim.updateBuildingMinimum}
           onSetSetupMode={sim.setSetupMode}
+          onStartSimulation={sim.startSimulation}
         />
 
         <div style={mapColumnStyle}>

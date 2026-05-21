@@ -737,10 +737,11 @@ export function useSimulation() {
   const startSimulation = useCallback(() => {
     commit((current) => {
       if (!current.simulation) return current;
+      if (current.simulation.status !== 'setup') return current;
       return appendLog(
         { ...current, simulation: { ...current.simulation, status: 'active' } },
         actorForRole(current.role),
-        'Simulatsioon käivitati'
+        'Õppejõud alustas simulatsiooni.'
       );
     });
   }, [commit]);
@@ -1222,10 +1223,16 @@ export function useSimulation() {
         if (!current.simulation) return current;
         const building = current.buildings.find((item) => item.id === buildingId);
         if (!building) return current;
+        const nextMinimum = Math.max(0, minimumStaff);
+        if (building.minimumStaff === nextMinimum) return current;
         const buildings = current.buildings.map((item) =>
-          item.id === buildingId ? { ...item, minimumStaff: Math.max(0, minimumStaff) } : item
+          item.id === buildingId ? { ...item, minimumStaff: nextMinimum } : item
         );
-        return appendLog({ ...current, buildings }, 'teacher', `${building.name} miinimumkoosseis määrati: ${minimumStaff}`);
+        return appendLog(
+          { ...current, buildings },
+          'teacher',
+          `Õppejõud muutis üksuse miinimumkoosseisu: ${building.name} ${nextMinimum}.`
+        );
       });
     },
     [commit]
@@ -1241,7 +1248,7 @@ export function useSimulation() {
       role: OfficerRole = 'valvur'
     ) => {
       commit((current) => {
-        if (!current.simulation) return current;
+        if (!current.simulation || current.simulation.status !== 'setup') return current;
         const targetId =
           current.simulation.setupMode === 'student_places_officers'
             ? RESOURCE_POOL_ID
@@ -1261,7 +1268,69 @@ export function useSimulation() {
           currentIncidentId: null,
           currentBusId: null,
         };
-        return appendLog({ ...current, officers: [...current.officers, officer] }, 'teacher', `Ametnik lisatud: ${officer.name}`);
+        return appendLog(
+          { ...current, officers: [...current.officers, officer] },
+          'teacher',
+          `Õppejõud lisas ametniku: ${officer.name}.`
+        );
+      });
+    },
+    [commit]
+  );
+
+  const updateOfficer = useCallback(
+    (
+      officerId: string,
+      patch: Partial<
+        Pick<
+          Officer,
+          | 'name'
+          | 'gender'
+          | 'role'
+          | 'hasEscortPermission'
+          | 'hasTaserPermission'
+          | 'homeBuildingId'
+          | 'currentBuildingId'
+          | 'currentIncidentId'
+          | 'currentBusId'
+          | 'status'
+        >
+      >
+    ) => {
+      commit((current) => {
+        if (!current.simulation || current.simulation.status !== 'setup') return current;
+        const officer = current.officers.find((item) => item.id === officerId);
+        if (!officer) return current;
+        const officers = current.officers.map((item) =>
+          item.id === officerId
+            ? {
+                ...item,
+                ...patch,
+                name: patch.name?.trim() ? patch.name.trim() : item.name,
+              }
+            : item
+        );
+        return appendLog({ ...current, officers }, 'teacher', `Õppejõud muutis ametniku andmeid: ${officer.name}.`);
+      });
+    },
+    [commit]
+  );
+
+  const removeOfficer = useCallback(
+    (officerId: string) => {
+      commit((current) => {
+        if (!current.simulation || current.simulation.status !== 'setup') return current;
+        const officer = current.officers.find((item) => item.id === officerId);
+        if (!officer) return current;
+        return appendLog(
+          {
+            ...current,
+            officers: current.officers.filter((item) => item.id !== officerId),
+            incidents: removeOfficerFromAllIncidents(officerId, current.incidents),
+          },
+          'teacher',
+          `Õppejõud eemaldas ametniku: ${officer.name}.`
+        );
       });
     },
     [commit]
@@ -1293,6 +1362,8 @@ export function useSimulation() {
     closeIncident,
     updateBuildingMinimum,
     addOfficer,
+    updateOfficer,
+    removeOfficer,
     loadLocalSnapshotById,
   };
 }
