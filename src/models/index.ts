@@ -77,6 +77,7 @@ export interface IncidentUpdate {
 export interface Incident {
   id: string;
   simulationId: string;
+  sharedScenarioEventId?: string;
   buildingId: string;
   title: string;
   description: string;
@@ -115,6 +116,22 @@ export interface ClassroomGroup {
   teacherCode: string;
 }
 
+export type SharedScenarioEventKind = 'incident' | 'escalation';
+
+export interface SharedScenarioEvent {
+  id: string;
+  kind: SharedScenarioEventKind;
+  title: string;
+  description: string;
+  targetBuildingId: string;
+  targetBuildingName: string;
+  severity: IncidentSeverity;
+  requiredOfficers: number;
+  sentToAllGroups: boolean;
+  parentEventId?: string;
+  createdAt: string;
+}
+
 export interface ClassroomExercise {
   id: string;
   title: string;
@@ -122,6 +139,7 @@ export interface ClassroomExercise {
   teacherCode: string;
   groupCount: number;
   groups: ClassroomGroup[];
+  sharedScenarioEvents: SharedScenarioEvent[];
 }
 
 export type WarningType =

@@ -31,6 +31,7 @@ interface Props {
   onActivateOverviewInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onActivateOverviewInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyPreparedEscalation?: (inject: PreparedScenarioInject, incidentId: string) => void;
+  onApplyPreparedEscalationForAllGroups?: (inject: PreparedScenarioInject, incidentId: string) => void;
   canActivateAllGroups?: boolean;
   onQuickOverviewEscalation?: (incidentId: string, action: OverviewEscalationAction) => void;
   onOverviewOfficerInjured?: (incidentId: string, officerId: string) => void;
@@ -54,6 +55,7 @@ export const RightSidebar: React.FC<Props> = ({
   onActivateOverviewInject,
   onActivateOverviewInjectForAllGroups,
   onApplyPreparedEscalation,
+  onApplyPreparedEscalationForAllGroups,
   canActivateAllGroups = false,
   onQuickOverviewEscalation,
   onOverviewOfficerInjured,
@@ -165,9 +167,10 @@ export const RightSidebar: React.FC<Props> = ({
                   onActivateInjectForAllGroups={(inject, buildingId) => onActivatePreparedInjectForAllGroups?.(inject, buildingId)}
                   canActivateAllGroups={canActivateAllGroups}
                   onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
+                  onApplyEscalationForAllGroups={(inject, incidentId) => onApplyPreparedEscalationForAllGroups?.(inject, incidentId)}
                 />
                 <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
-                  Lisa sündmus
+                  {canActivateAllGroups ? 'Saada situatsioon kõigile gruppidele' : 'Lisa sündmus'}
                 </button>
               </>
             )}

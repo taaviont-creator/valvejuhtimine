@@ -13,9 +13,13 @@ create table if not exists public.classroom_exercises (
   teacher_code text not null unique,
   group_count integer not null,
   groups jsonb not null,
+  shared_scenario_events jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.classroom_exercises
+add column if not exists shared_scenario_events jsonb not null default '[]'::jsonb;
 
 alter table public.classroom_exercises enable row level security;
 

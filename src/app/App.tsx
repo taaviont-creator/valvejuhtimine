@@ -114,6 +114,21 @@ export const App: React.FC = () => {
     );
     markPreparedInjectActivated(inject.id);
   };
+  const applyPreparedEscalationForAllGroups = (inject: PreparedScenarioInject, incidentId: string) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    const severity = severityRank[inject.severity] > severityRank[incident.severity] ? inject.severity : incident.severity;
+    void sim.escalateIncidentForAllClassroomGroups(
+      incidentId,
+      inject.escalationText ?? inject.description,
+      severity,
+      Math.max(incident.requiredOfficers, inject.requiredOfficers),
+      incident.requiresEscortPermission || inject.requiresEscortPermission,
+      incident.requiresTaserPermission || inject.requiresTaserPermission,
+      incident.externalEscortRequired || inject.externalEscortRequired
+    );
+    markPreparedInjectActivated(inject.id);
+  };
   const activatePreparedInjectFromOverview = (inject: PreparedScenarioInject, buildingId: string) => {
     activatePreparedInject(inject, buildingId, `Õppejõud käivitas sündmuse ülevaatest: ${inject.title}`);
   };
@@ -270,6 +285,7 @@ export const App: React.FC = () => {
           onActivateOverviewInject={activatePreparedInjectFromOverview}
           onActivateOverviewInjectForAllGroups={activatePreparedInjectForAllGroups}
           onApplyPreparedEscalation={applyPreparedEscalation}
+          onApplyPreparedEscalationForAllGroups={applyPreparedEscalationForAllGroups}
           canActivateAllGroups={Boolean(state.classroomExercise)}
           onQuickOverviewEscalation={quickOverviewEscalation}
           onOverviewOfficerInjured={markOfficerInjuredFromOverview}
@@ -282,7 +298,11 @@ export const App: React.FC = () => {
           buildings={state.buildings}
           initialBuildingId={incidentFormBuildingId}
           onSubmit={(buildingId, title, desc, sev, req, escort, taser, externalEscort) => {
-            sim.createIncident(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
+            if (state.classroomExercise && isFacilitator) {
+              void sim.createIncidentForAllClassroomGroups(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
+            } else {
+              sim.createIncident(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
+            }
             setIncidentFormBuildingId(null);
           }}
           onCancel={() => setIncidentFormBuildingId(null)}
@@ -301,6 +321,14 @@ export const App: React.FC = () => {
               sim.escalateIncident(escalateIncidentId, text, severity, required, escort, taser, externalEscort);
               setEscalateIncidentId(null);
             }}
+            onSubmitAllGroups={
+              state.classroomExercise
+                ? (text, severity, required, escort, taser, externalEscort) => {
+                    void sim.escalateIncidentForAllClassroomGroups(escalateIncidentId, text, severity, required, escort, taser, externalEscort);
+                    setEscalateIncidentId(null);
+                  }
+                : undefined
+            }
             onMarkOfficerInjured={(officerId) => {
               sim.markOfficerInjured(escalateIncidentId, officerId);
               setEscalateIncidentId(null);

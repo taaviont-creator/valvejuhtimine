@@ -69,7 +69,7 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
   return (
     <section style={panelStyle}>
       <button onClick={() => setCollapsed((value) => !value)} style={headerButtonStyle}>
-        <span>Stsenaariumi ülevaade</span>
+        <span>{canActivateAllGroups ? 'Ühine stsenaarium' : 'Stsenaariumi ülevaade'}</span>
         <span style={collapseStyle}>{collapsed ? '+' : '-'}</span>
       </button>
 
@@ -83,7 +83,7 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
           </div>
           {warnings.length > 0 && <div style={warningLineStyle}>{warnings.length} aktiivset hoiatust</div>}
 
-          <OverviewSection title="Käivitamata valmis sündmused" count={unactivatedInjects.length}>
+          <OverviewSection title={canActivateAllGroups ? 'Saada situatsioon kõigile gruppidele' : 'Käivitamata valmis sündmused'} count={unactivatedInjects.length}>
             {unactivatedInjects.length === 0 ? (
               <EmptyText text="Kõik valmis sündmused on selles vaates käivitatud." />
             ) : (
@@ -94,14 +94,15 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
                     <span style={mutedMonoStyle}>{severityLabels[inject.severity]}</span>
                   </div>
                   <div style={mutedTextStyle}>{inject.targetBuildingName} | vajalik {inject.requiredOfficers}</div>
-                  <button onClick={() => activateInject(inject)} style={miniPrimaryStyle}>
-                    {canActivateAllGroups ? 'Käivita selles grupis' : 'Käivita'}
-                  </button>
+                  {canActivateAllGroups && <div style={mutedTextStyle}>Kõik grupid lahendavad sama situatsiooni</div>}
                   {canActivateAllGroups && (
                     <button onClick={() => activateInjectForAllGroups(inject)} style={miniPrimaryStyle}>
-                      Käivita kõigis gruppides
+                      Käivita kõigile gruppidele
                     </button>
                   )}
+                  <button onClick={() => activateInject(inject)} style={miniPrimaryStyle}>
+                    {canActivateAllGroups ? 'Käivita ainult valitud grupis' : 'Käivita'}
+                  </button>
                 </div>
               ))
             )}

@@ -9,6 +9,7 @@ interface Props {
   onActivateInject: (inject: PreparedScenarioInject, buildingId: string) => void;
   onActivateInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyEscalation: (inject: PreparedScenarioInject, incidentId: string) => void;
+  onApplyEscalationForAllGroups?: (inject: PreparedScenarioInject, incidentId: string) => void;
   canActivateAllGroups?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const PreparedInjectPanel: React.FC<Props> = ({
   onActivateInject,
   onActivateInjectForAllGroups,
   onApplyEscalation,
+  onApplyEscalationForAllGroups,
   canActivateAllGroups = false,
 }) => {
   const selectableBuildings = buildings.filter((building) => !building.isResourcePool);
@@ -80,12 +82,19 @@ export const PreparedInjectPanel: React.FC<Props> = ({
     setEditingId(null);
   };
 
+  const applyEscalationForAllGroups = (inject: PreparedScenarioInject) => {
+    if (!selectedIncident) return;
+    onApplyEscalationForAllGroups?.(inject, selectedIncident.id);
+    setDrafts((current) => ({ ...current, [inject.id]: { ...inject, status: 'activated' } }));
+    setEditingId(null);
+  };
+
   return (
     <section style={panelStyle}>
       <div style={panelHeaderStyle}>
         <div>
           <div style={panelTitleStyle}>Valmis sündmused</div>
-          <div style={panelMetaStyle}>Õppejõu ettevalmistatud olukorrad</div>
+          <div style={panelMetaStyle}>{canActivateAllGroups ? 'Ühine stsenaarium gruppidele' : 'Õppejõu ettevalmistatud olukorrad'}</div>
         </div>
         {activeIncidents.length > 0 && (
           <select
@@ -136,22 +145,33 @@ export const PreparedInjectPanel: React.FC<Props> = ({
                 <button onClick={() => setEditingId(editing ? null : inject.id)} style={secondaryButtonStyle}>
                   {editing ? 'Sulge' : 'Muuda'}
                 </button>
-                <button onClick={() => activateInject(inject)} style={primaryButtonStyle}>
-                  {canActivateAllGroups ? 'Käivita selles grupis' : 'Käivita sündmus'}
-                </button>
                 {canActivateAllGroups && (
                   <button onClick={() => activateInjectForAllGroups(inject)} style={primaryButtonStyle}>
-                    Käivita kõigis gruppides
+                    Käivita kõigile gruppidele
                   </button>
                 )}
+                <button onClick={() => activateInject(inject)} style={canActivateAllGroups ? secondaryButtonStyle : primaryButtonStyle}>
+                  {canActivateAllGroups ? 'Käivita ainult valitud grupis' : 'Käivita sündmus'}
+                </button>
                 {inject.canEscalate && (
-                  <button
-                    onClick={() => applyEscalation(inject)}
-                    disabled={!selectedIncident}
-                    style={{ ...secondaryButtonStyle, color: selectedIncident ? 'var(--amber)' : 'var(--text-muted)', borderColor: selectedIncident ? 'var(--amber)' : 'var(--border)', opacity: selectedIncident ? 1 : 0.45 }}
-                  >
-                    Lisa eskalatsioon
-                  </button>
+                  <>
+                    {canActivateAllGroups && (
+                      <button
+                        onClick={() => applyEscalationForAllGroups(inject)}
+                        disabled={!selectedIncident}
+                        style={{ ...secondaryButtonStyle, color: selectedIncident ? 'var(--amber)' : 'var(--text-muted)', borderColor: selectedIncident ? 'var(--amber)' : 'var(--border)', opacity: selectedIncident ? 1 : 0.45 }}
+                      >
+                        Saada eskalatsioon kõigile gruppidele
+                      </button>
+                    )}
+                    <button
+                      onClick={() => applyEscalation(inject)}
+                      disabled={!selectedIncident}
+                      style={{ ...secondaryButtonStyle, color: selectedIncident ? 'var(--amber)' : 'var(--text-muted)', borderColor: selectedIncident ? 'var(--amber)' : 'var(--border)', opacity: selectedIncident ? 1 : 0.45 }}
+                    >
+                      {canActivateAllGroups ? 'Lisa eskalatsioon sellele grupile' : 'Lisa eskalatsioon'}
+                    </button>
+                  </>
                 )}
               </div>
             </article>

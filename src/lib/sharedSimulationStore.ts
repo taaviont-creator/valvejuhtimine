@@ -214,13 +214,32 @@ async function saveClassroomRemote(exercise: ClassroomExercise) {
       teacher_code: exercise.teacherCode,
       group_count: exercise.groupCount,
       groups: exercise.groups,
+      shared_scenario_events: exercise.sharedScenarioEvents,
       created_at: exercise.createdAt,
       updated_at: new Date().toISOString(),
     }),
   });
 
   if (!response.ok) {
-    throw new Error(await describeSupabaseError(response, 'save classroom exercise'));
+    const error = await describeSupabaseError(response, 'save classroom exercise');
+    if (error.includes('shared_scenario_events')) {
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${CLASSROOM_TABLE_NAME}?on_conflict=id`, {
+        method: 'POST',
+        headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({
+          id: exercise.id,
+          title: exercise.title,
+          teacher_code: exercise.teacherCode,
+          group_count: exercise.groupCount,
+          groups: exercise.groups,
+          created_at: exercise.createdAt,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      if (legacyResponse.ok) return;
+      throw new Error(await describeSupabaseError(legacyResponse, 'save classroom exercise'));
+    }
+    throw new Error(error);
   }
 }
 
@@ -273,13 +292,42 @@ async function getRemoteClassroomByTeacherCode(teacherCode: string): Promise<Cla
   if (!hasSupabaseConfig) return null;
 
   const normalized = encodeURIComponent(normalizeJoinCode(teacherCode));
-  const query = `teacher_code=eq.${normalized}&select=id,title,teacher_code,group_count,groups,created_at&limit=1`;
+  const query = `teacher_code=eq.${normalized}&select=id,title,teacher_code,group_count,groups,shared_scenario_events,created_at&limit=1`;
   const response = await fetch(`${supabaseUrl}/rest/v1/${CLASSROOM_TABLE_NAME}?${query}`, {
     headers: headers(),
   });
 
   if (!response.ok) {
-    throw new Error(await describeSupabaseError(response, 'load classroom exercise'));
+    const error = await describeSupabaseError(response, 'load classroom exercise');
+    if (error.includes('shared_scenario_events')) {
+      const legacyQuery = `teacher_code=eq.${normalized}&select=id,title,teacher_code,group_count,groups,created_at&limit=1`;
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${CLASSROOM_TABLE_NAME}?${legacyQuery}`, {
+        headers: headers(),
+      });
+      if (!legacyResponse.ok) {
+        throw new Error(await describeSupabaseError(legacyResponse, 'load classroom exercise'));
+      }
+      const legacyRows = (await legacyResponse.json()) as Array<{
+        id: string;
+        title: string;
+        teacher_code: string;
+        group_count: number;
+        groups: ClassroomExercise['groups'];
+        created_at: string;
+      }>;
+      const legacyRow = legacyRows[0];
+      if (!legacyRow) return null;
+      return {
+        id: legacyRow.id,
+        title: legacyRow.title,
+        createdAt: legacyRow.created_at,
+        teacherCode: legacyRow.teacher_code,
+        groupCount: legacyRow.group_count,
+        groups: legacyRow.groups,
+        sharedScenarioEvents: [],
+      };
+    }
+    throw new Error(error);
   }
 
   const rows = (await response.json()) as Array<{
@@ -288,6 +336,7 @@ async function getRemoteClassroomByTeacherCode(teacherCode: string): Promise<Cla
     teacher_code: string;
     group_count: number;
     groups: ClassroomExercise['groups'];
+    shared_scenario_events?: ClassroomExercise['sharedScenarioEvents'];
     created_at: string;
   }>;
   const row = rows[0];
@@ -299,6 +348,7 @@ async function getRemoteClassroomByTeacherCode(teacherCode: string): Promise<Cla
     teacherCode: row.teacher_code,
     groupCount: row.group_count,
     groups: row.groups,
+    sharedScenarioEvents: row.shared_scenario_events ?? [],
   };
 }
 

@@ -12,12 +12,20 @@ interface Props {
     requiresTaser: boolean,
     externalEscortRequired: boolean
   ) => void;
+  onSubmitAllGroups?: (
+    text: string,
+    severity: IncidentSeverity,
+    requiredOfficers: number,
+    requiresEscort: boolean,
+    requiresTaser: boolean,
+    externalEscortRequired: boolean
+  ) => void;
   assignedOfficers: Officer[];
   onMarkOfficerInjured: (officerId: string) => void;
   onCancel: () => void;
 }
 
-export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSubmit, onMarkOfficerInjured, onCancel }) => {
+export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSubmit, onSubmitAllGroups, onMarkOfficerInjured, onCancel }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [text, setText] = useState('');
   const [severity, setSeverity] = useState<IncidentSeverity>(incident.severity);
@@ -105,12 +113,21 @@ export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSu
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
+          {onSubmitAllGroups && (
+            <button
+              onClick={() => text.trim() && onSubmitAllGroups(text.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired)}
+              disabled={!text.trim()}
+              style={{ ...primaryStyle, opacity: text.trim() ? 1 : 0.45 }}
+            >
+              Saada eskalatsioon kõigile gruppidele
+            </button>
+          )}
           <button
             onClick={() => text.trim() && onSubmit(text.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired)}
             disabled={!text.trim()}
-            style={{ ...primaryStyle, opacity: text.trim() ? 1 : 0.45 }}
+            style={{ ...(onSubmitAllGroups ? secondaryActionStyle : primaryStyle), opacity: text.trim() ? 1 : 0.45 }}
           >
-            Salvesta eskalatsioon
+            {onSubmitAllGroups ? 'Lisa eskalatsioon sellele grupile' : 'Salvesta eskalatsioon'}
           </button>
           <button onClick={onCancel} style={secondaryStyle}>Tühista</button>
         </div>
@@ -249,6 +266,13 @@ const primaryStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
   fontSize: 15,
   fontWeight: 700,
+};
+
+const secondaryActionStyle: React.CSSProperties = {
+  ...primaryStyle,
+  background: 'transparent',
+  border: '1px solid var(--red)',
+  color: 'var(--red)',
 };
 
 const secondaryStyle: React.CSSProperties = {
