@@ -577,8 +577,8 @@ const sidebarStyle: React.CSSProperties = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
-  background: 'var(--bg-panel)',
-  borderRight: '1px solid var(--border)',
+  background: '#eef3f8',
+  borderRight: '1px solid var(--border-bright)',
   overflow: 'hidden',
   flexShrink: 0,
 };
@@ -588,12 +588,14 @@ const sectionHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  borderBottom: '1px solid var(--border)',
+  background: '#f8fafc',
+  borderBottom: '1px solid var(--border-bright)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
-  color: 'var(--text-muted)',
+  color: 'var(--text-primary)',
   letterSpacing: 2,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const listStyle: React.CSSProperties = {
@@ -608,7 +610,7 @@ const listStyle: React.CSSProperties = {
 const officerGroupStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(255,255,255,0.52)',
+  background: '#ffffff',
   padding: 8,
   boxShadow: 'var(--shadow-card)',
 };
@@ -620,6 +622,7 @@ const groupTitleStyle: React.CSSProperties = {
   letterSpacing: 1,
   textTransform: 'uppercase',
   marginBottom: 7,
+  fontWeight: 800,
 };
 
 const roleGroupStyle: React.CSSProperties = {
@@ -629,22 +632,22 @@ const roleGroupStyle: React.CSSProperties = {
 const roleTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 8.5,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   letterSpacing: 1,
   textTransform: 'uppercase',
   marginBottom: 4,
 };
 
 const detailStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border)',
+  borderTop: '1px solid var(--border-bright)',
   padding: 10,
   overflowY: 'auto',
   maxHeight: '45%',
 };
 
 const setupShellStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border)',
-  background: 'var(--bg-panel)',
+  borderTop: '1px solid var(--border-bright)',
+  background: '#f8fafc',
   maxHeight: '58%',
   overflowY: 'auto',
 };
@@ -652,15 +655,16 @@ const setupShellStyle: React.CSSProperties = {
 const setupToggleStyle: React.CSSProperties = {
   width: '100%',
   padding: '8px 10px',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: 'none',
   borderBottom: '1px solid var(--border)',
-  color: 'var(--amber)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
   letterSpacing: 1,
   textTransform: 'uppercase',
   textAlign: 'left',
+  fontWeight: 800,
 };
 
 const setupContentStyle: React.CSSProperties = {
@@ -672,17 +676,18 @@ const setupContentStyle: React.CSSProperties = {
 const setupSectionStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(255,255,255,0.45)',
+  background: '#ffffff',
   padding: 8,
 };
 
 const setupSectionTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--amber)',
+  color: 'var(--text-primary)',
   letterSpacing: 1.2,
   textTransform: 'uppercase',
   marginBottom: 7,
+  fontWeight: 800,
 };
 
 const setupTableHeaderStyle: React.CSSProperties = {
@@ -691,7 +696,7 @@ const setupTableHeaderStyle: React.CSSProperties = {
   gap: 8,
   fontFamily: 'var(--font-mono)',
   fontSize: 8.5,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   letterSpacing: 0.8,
   textTransform: 'uppercase',
   marginBottom: 5,
@@ -726,8 +731,9 @@ const officerSetupRowStyle: React.CSSProperties = {
 const fieldStyle: React.CSSProperties = {
   display: 'grid',
   gap: 3,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontSize: 10,
+  fontWeight: 600,
 };
 
 const addOfficerBoxStyle: React.CSSProperties = {
@@ -795,7 +801,7 @@ const activeNoticeStyle: React.CSSProperties = {
 const miniLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   letterSpacing: 1.5,
   textTransform: 'uppercase',
   marginBottom: 5,
@@ -829,6 +835,7 @@ const smallButtonStyle: React.CSSProperties = {
   padding: 6,
   fontFamily: 'var(--font-mono)',
   fontSize: 11,
+  fontWeight: 700,
 };
 
 const wideSmallButtonStyle: React.CSSProperties = {

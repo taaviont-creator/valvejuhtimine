@@ -36,7 +36,7 @@ export const Header: React.FC<Props> = ({
       : syncStatus === 'loading'
       ? 'Sünkroonimine'
       : 'Sünkroonimise viga';
-  const statusLabel = simulation.status === 'setup' ? 'seadistamine' : simulation.status === 'active' ? 'aktiivne' : 'lõpetatud';
+  const statusLabel = simulation.status === 'setup' ? 'Ettevalmistus' : simulation.status === 'active' ? 'Käimas' : 'Lõpetatud';
 
   return (
     <div style={headerStyle}>
@@ -46,7 +46,7 @@ export const Header: React.FC<Props> = ({
       <div>
         <div style={nameStyle}>{simulation.name}</div>
         <div style={metaStyle}>
-          {statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}
+          Staatus: {statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}
           {simulation.classroomGroupName ? ` | ${simulation.classroomGroupName}` : ''}
         </div>
       </div>
@@ -72,7 +72,10 @@ export const Header: React.FC<Props> = ({
       <div style={{ flex: 1 }} />
 
       {onStart && simulation.status === 'setup' && (
-        <button onClick={onStart} style={primaryButtonStyle}>Käivita</button>
+        <button onClick={onStart} style={primaryButtonStyle}>Alusta simulatsiooni</button>
+      )}
+      {onStart && simulation.status === 'completed' && (
+        <button disabled style={ghostButtonStyle}>Simulatsioon lõpetatud</button>
       )}
       {onReset && (
         <button onClick={onReset} style={ghostButtonStyle}>Lähtesta</button>

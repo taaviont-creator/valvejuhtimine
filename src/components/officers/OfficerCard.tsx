@@ -58,7 +58,7 @@ export const OfficerCard: React.FC<Props> = ({
 };
 
 const cardStyle = (selected: boolean, color: string): React.CSSProperties => ({
-  background: selected ? 'var(--bg-elevated)' : 'var(--bg-card)',
+  background: selected ? '#f2f7fb' : '#ffffff',
   border: `1px solid ${selected ? 'var(--border-bright)' : 'var(--border)'}`,
   borderLeft: `3px solid ${color}`,
   borderRadius: 'var(--radius-sm)',
@@ -71,7 +71,7 @@ const locationStyle: React.CSSProperties = {
   marginTop: 6,
   fontFamily: 'var(--font-mono)',
   fontSize: 10.5,
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -89,4 +89,5 @@ const actionStyle: React.CSSProperties = {
   fontSize: 9,
   letterSpacing: 0.5,
   textTransform: 'uppercase',
+  fontWeight: 700,
 };

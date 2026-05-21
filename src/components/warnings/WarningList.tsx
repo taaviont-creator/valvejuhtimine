@@ -8,7 +8,7 @@ interface Props {
 const warningGroups: Array<{ title: string; types: WarningType[]; color: string }> = [
   { title: 'Üksuse mehitus', types: ['building_below_minimum'], color: 'var(--amber)' },
   { title: 'Sündmuse ressursid', types: ['incident_unassigned', 'incident_understaffed'], color: 'var(--red)' },
-  { title: 'Puuduvad õigused', types: ['missing_escort_permission', 'missing_taser_permission'], color: 'var(--amber)' },
+  { title: 'Puuduvad õigused', types: ['missing_escort_permission', 'missing_taser_permission', 'missing_senior_officer'], color: 'var(--amber)' },
   { title: 'Saatebussid', types: ['bus_understaffed'], color: '#ff99cc' },
   { title: 'Määramise konfliktid', types: ['officer_already_assigned'], color: 'var(--red)' },
 ];
@@ -50,7 +50,7 @@ const okStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-sm)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10.5,
-  color: 'var(--green)',
+  color: 'var(--text-primary)',
   letterSpacing: 0.5,
 };
 
@@ -64,6 +64,7 @@ const summaryStyle: React.CSSProperties = {
   fontSize: 10,
   textTransform: 'uppercase',
   letterSpacing: 0.8,
+  fontWeight: 800,
 };
 
 const groupStyle = (color: string): React.CSSProperties => ({
@@ -81,10 +82,12 @@ const groupTitleStyle: React.CSSProperties = {
   letterSpacing: 1,
   textTransform: 'uppercase',
   marginBottom: 5,
+  fontWeight: 800,
 };
 
 const warningStyle: React.CSSProperties = {
   fontSize: 12,
   color: 'var(--text-primary)',
   lineHeight: 1.45,
+  fontWeight: 500,
 };

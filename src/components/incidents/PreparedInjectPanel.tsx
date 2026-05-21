@@ -216,7 +216,7 @@ const Tag: React.FC<{ text: string; color: string }> = ({ text, color }) => (
 const panelStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   marginBottom: 8,
   boxShadow: 'var(--shadow-card)',
 };
@@ -232,14 +232,15 @@ const panelHeaderStyle: React.CSSProperties = {
 const panelTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
-  color: 'var(--cyan)',
+  color: 'var(--text-primary)',
   letterSpacing: 1,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const panelMetaStyle: React.CSSProperties = {
   fontSize: 10,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
 };
 
 const incidentSelectStyle: React.CSSProperties = {
@@ -263,7 +264,7 @@ const cardListStyle: React.CSSProperties = {
 
 const cardStyle = (status: PreparedInjectStatus): React.CSSProperties => ({
   padding: 9,
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: `1px solid ${status === 'activated' ? 'var(--green-dim)' : 'var(--border)'}`,
   borderLeft: `3px solid ${status === 'activated' ? 'var(--green)' : 'var(--cyan)'}`,
   borderRadius: 'var(--radius-sm)',
@@ -278,26 +279,28 @@ const cardTopStyle: React.CSSProperties = {
 const titleStyle: React.CSSProperties = {
   fontSize: 12.5,
   lineHeight: 1.3,
+  color: 'var(--text-primary)',
 };
 
 const statusStyle = (status: PreparedInjectStatus): React.CSSProperties => ({
   flexShrink: 0,
-  color: status === 'activated' ? 'var(--green)' : 'var(--text-muted)',
+  color: status === 'activated' ? 'var(--green)' : 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 8,
   textTransform: 'uppercase',
+  fontWeight: 800,
 });
 
 const targetStyle: React.CSSProperties = {
   marginTop: 3,
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
 };
 
 const descriptionStyle: React.CSSProperties = {
   marginTop: 5,
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   fontSize: 11.5,
   lineHeight: 1.4,
 };
@@ -354,10 +357,11 @@ const secondaryButtonStyle: React.CSSProperties = {
   background: 'transparent',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
   textTransform: 'uppercase',
+  fontWeight: 700,
 };
 
 const editorStyle: React.CSSProperties = {

@@ -84,6 +84,18 @@ export function calculateWarnings(
         });
       }
     }
+
+    if (incident.requiresSeniorOfficer) {
+      const seniorCount = assigned.filter((officer) => officer.role === 'vanemvalvur').length;
+      if (seniorCount < 1) {
+        warnings.push({
+          id: `incident-senior-${incident.id}`,
+          type: 'missing_senior_officer',
+          message: `Sündmusel "${incident.title}" puudub vajalik vanemvalvur.`,
+          relatedIncidentId: incident.id,
+        });
+      }
+    }
   }
 
   for (const bus of buses) {

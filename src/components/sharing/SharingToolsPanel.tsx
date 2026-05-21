@@ -4,8 +4,6 @@ import { ClassroomExercise, Simulation } from '../../models';
 interface Props {
   simulation: Simulation;
   classroomExercise: ClassroomExercise | null;
-  onResetSimulation: () => void;
-  onResetGroup: (simulationId: string) => void;
 }
 
 type CopyKey = string;
@@ -16,12 +14,7 @@ function buildLink(code: string, role: 'teacher' | 'student', groupId?: string) 
   return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
 }
 
-export const SharingToolsPanel: React.FC<Props> = ({
-  simulation,
-  classroomExercise,
-  onResetSimulation,
-  onResetGroup,
-}) => {
+export const SharingToolsPanel: React.FC<Props> = ({ simulation, classroomExercise }) => {
   const [collapsed, setCollapsed] = useState(true);
   const [copiedKey, setCopiedKey] = useState<CopyKey | null>(null);
   const teacherCode = classroomExercise?.teacherCode ?? simulation.teacherCode ?? simulation.joinCode;
@@ -89,7 +82,7 @@ export const SharingToolsPanel: React.FC<Props> = ({
 
           <div style={noteStyle}>Jaga õpilastele ainult õpilase linki või õpilase koodi.</div>
 
-          {classroomExercise ? (
+          {classroomExercise && (
             <div style={groupSectionStyle}>
               <div style={sectionTitleStyle}>Gruppide lingid</div>
               <div style={groupGridStyle}>
@@ -113,29 +106,12 @@ export const SharingToolsPanel: React.FC<Props> = ({
                         >
                           Kopeeri link
                         </CopyButton>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Kas oled kindel? See lähtestab ainult selle grupi tööseisu.')) {
-                              onResetGroup(group.simulationId);
-                            }
-                          }}
-                          style={resetButtonStyle}
-                        >
-                          Lähtesta grupp
-                        </button>
                       </div>
                     </article>
                   );
                 })}
               </div>
             </div>
-          ) : (
-            <button
-              onClick={onResetSimulation}
-              style={singleResetButtonStyle}
-            >
-              Lähtesta simulatsioon
-            </button>
           )}
         </div>
       )}
@@ -166,8 +142,8 @@ const CopyButton: React.FC<{ copied: boolean; onClick: () => void; children: Rea
 );
 
 const panelStyle: React.CSSProperties = {
-  background: 'var(--bg-panel)',
-  borderBottom: '1px solid var(--border)',
+  background: '#f8fafc',
+  borderBottom: '1px solid var(--border-bright)',
   flexShrink: 0,
 };
 
@@ -178,13 +154,14 @@ const headerButtonStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  background: 'var(--bg-elevated)',
+  background: '#eef4fa',
   border: 'none',
-  color: 'var(--cyan)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
   letterSpacing: 1,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const bodyStyle: React.CSSProperties = {
@@ -199,7 +176,7 @@ const warningStyle: React.CSSProperties = {
   background: 'rgba(166,111,31,0.08)',
   border: '1px solid var(--amber-dim)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--amber)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
 };
@@ -218,11 +195,12 @@ const shareItemStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
   letterSpacing: 1,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const valueRowStyle: React.CSSProperties = {
@@ -238,7 +216,7 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   padding: '5px 7px',
   fontSize: 10,
 };
@@ -257,7 +235,7 @@ const copyButtonStyle = (copied: boolean): React.CSSProperties => ({
 });
 
 const noteStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontSize: 10,
 };
 
@@ -307,21 +285,4 @@ const buttonRowStyle: React.CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: 5,
-};
-
-const resetButtonStyle: React.CSSProperties = {
-  minHeight: 26,
-  background: 'transparent',
-  border: '1px solid rgba(185,67,77,0.35)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--red)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  textTransform: 'uppercase',
-  padding: '4px 7px',
-};
-
-const singleResetButtonStyle: React.CSSProperties = {
-  ...resetButtonStyle,
-  alignSelf: 'flex-start',
 };

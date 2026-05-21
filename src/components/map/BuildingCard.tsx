@@ -3,8 +3,15 @@ import { Building, Incident, Officer } from '../../models';
 import { getBuildingOfficerCount, getIncidentOfficers } from '../../lib/calculations';
 import { OfficerMarker } from '../officers/OfficerMarker';
 
+type MapPosition = {
+  x: number;
+  y: number;
+  width?: number;
+};
+
 interface Props {
   building: Building;
+  mapPosition?: MapPosition;
   officers: Officer[];
   incidents: Incident[];
   selected: boolean;
@@ -17,6 +24,7 @@ interface Props {
 
 export const BuildingCard: React.FC<Props> = ({
   building,
+  mapPosition,
   officers,
   incidents,
   selected,
@@ -81,15 +89,25 @@ export const BuildingCard: React.FC<Props> = ({
       onClick={onClick}
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropOfficer}
-      style={cardStyle(building, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}
+      style={cardStyle(building, mapPosition, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}
     >
+      <div style={roofStyle(building, critical, activeIncidents.length > 0, belowMin)} />
+      <div style={facadePatternStyle} />
       {activeIncidents.length > 0 && (
         <div style={incidentBadgeStyle(activeIncidents.some((incident) => incident.status === 'escalated'))}>
           {activeIncidents.length === 1 ? 'Sündmus' : `${activeIncidents.length} sündmust`}
         </div>
       )}
 
-      <div style={{ ...buildingNameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{building.name}</div>
+      <div style={headerStyle}>
+        <span style={buildingGlyphStyle(building.isResourcePool)} aria-hidden="true">
+          <span style={glyphWindowStyle} />
+          <span style={glyphWindowStyle} />
+          <span style={glyphWindowStyle} />
+          <span style={glyphWindowStyle} />
+        </span>
+        <div style={{ ...buildingNameStyle, color: selected ? 'var(--cyan)' : 'var(--text-primary)' }}>{building.name}</div>
+      </div>
 
       <div style={countRowStyle}>
         <span style={{ ...countStyle, color: critical ? 'var(--red)' : belowMin ? 'var(--amber)' : 'var(--green)' }}>
@@ -175,34 +193,72 @@ export const BuildingCard: React.FC<Props> = ({
   );
 };
 
-const cardStyle = (building: Building, borderColor: string, selected: boolean, critical: boolean, hasIncident: boolean, belowMin: boolean): React.CSSProperties => ({
-  position: 'absolute',
-  left: building.x,
-  top: building.y,
-  width: building.isResourcePool ? 240 : 200,
+const cardStyle = (
+  building: Building,
+  mapPosition: MapPosition | undefined,
+  borderColor: string,
+  selected: boolean,
+  critical: boolean,
+  hasIncident: boolean,
+  belowMin: boolean
+): React.CSSProperties => ({
+  position: mapPosition ? 'absolute' : 'relative',
+  left: mapPosition?.x,
+  top: mapPosition?.y,
+  width: mapPosition?.width ?? '100%',
+  minWidth: 0,
   minHeight: 112,
-  maxHeight: building.isResourcePool ? 230 : 250,
+  maxHeight: building.isResourcePool ? 260 : 270,
   overflowY: 'auto',
   background: critical
-    ? 'rgba(185,67,77,0.08)'
+    ? 'linear-gradient(180deg, rgba(185,67,77,0.13), rgba(255,255,255,0.94))'
     : hasIncident
-    ? 'rgba(34,121,157,0.07)'
+    ? 'linear-gradient(180deg, rgba(34,121,157,0.13), rgba(255,255,255,0.95))'
     : belowMin
-    ? 'rgba(166,111,31,0.08)'
+    ? 'linear-gradient(180deg, rgba(166,111,31,0.13), rgba(255,255,255,0.95))'
     : building.isResourcePool
-    ? 'rgba(39,122,87,0.06)'
-    : 'var(--bg-card)',
+    ? 'linear-gradient(180deg, rgba(39,122,87,0.13), rgba(255,255,255,0.96))'
+    : 'linear-gradient(180deg, #ffffff, #f6f8f5)',
   border: `1px solid ${borderColor}`,
-  borderRadius: 'var(--radius-md)',
-  padding: '12px 13px',
+  borderRadius: 7,
+  padding: hasIncident ? '26px 13px 12px' : '16px 13px 12px',
   cursor: 'pointer',
-  boxShadow: selected ? 'var(--shadow-glow)' : 'var(--shadow-card)',
+  boxShadow: selected ? '0 0 0 3px rgba(34,121,157,0.16), 0 8px 18px rgba(31,45,61,0.13)' : '0 6px 14px rgba(31,45,61,0.10)',
   userSelect: 'none',
+  zIndex: selected ? 6 : hasIncident ? 5 : 4,
 });
+
+const roofStyle = (building: Building, critical: boolean, hasIncident: boolean, belowMin: boolean): React.CSSProperties => ({
+  position: 'absolute',
+  left: -1,
+  right: -1,
+  top: -1,
+  height: 8,
+  borderRadius: '7px 7px 0 0',
+  background: critical
+    ? 'var(--red)'
+    : hasIncident
+    ? 'var(--cyan)'
+    : belowMin
+    ? 'var(--amber)'
+    : building.isResourcePool
+    ? 'var(--green)'
+    : '#687b8f',
+});
+
+const facadePatternStyle: React.CSSProperties = {
+  position: 'absolute',
+  inset: '8px 0 auto',
+  height: 24,
+  backgroundImage: 'linear-gradient(90deg, rgba(80,101,122,0.10) 1px, transparent 1px)',
+  backgroundSize: '18px 100%',
+  pointerEvents: 'none',
+  opacity: 0.5,
+};
 
 const incidentBadgeStyle = (escalated: boolean): React.CSSProperties => ({
   position: 'absolute',
-  top: -8,
+  top: 5,
   right: 8,
   background: escalated ? 'var(--red)' : 'var(--cyan)',
   color: '#fff',
@@ -215,13 +271,40 @@ const incidentBadgeStyle = (escalated: boolean): React.CSSProperties => ({
   textTransform: 'uppercase',
 });
 
+const headerStyle: React.CSSProperties = {
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 8,
+  marginBottom: 8,
+};
+
+const buildingGlyphStyle = (resourcePool?: boolean): React.CSSProperties => ({
+  width: 28,
+  height: 26,
+  flexShrink: 0,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: 3,
+  padding: 4,
+  borderRadius: 4,
+  border: `1px solid ${resourcePool ? 'var(--green-dim)' : 'var(--border-bright)'}`,
+  background: resourcePool ? 'rgba(39,122,87,0.10)' : 'rgba(80,101,122,0.08)',
+  boxShadow: 'inset 0 -4px 0 rgba(80,101,122,0.08)',
+});
+
+const glyphWindowStyle: React.CSSProperties = {
+  borderRadius: 1,
+  background: 'rgba(34,121,157,0.22)',
+};
+
 const buildingNameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
   fontSize: 15,
   fontWeight: 700,
   letterSpacing: 0.2,
-  marginBottom: 8,
   lineHeight: 1.25,
+  minWidth: 0,
 };
 
 const countRowStyle: React.CSSProperties = {

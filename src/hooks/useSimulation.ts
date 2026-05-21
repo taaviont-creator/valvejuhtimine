@@ -8,6 +8,7 @@ import {
   ClassroomGroup,
   DecisionLogEntry,
   Incident,
+  IncidentAssessmentStatus,
   IncidentSeverity,
   IncidentStatus,
   IncidentUpdate,
@@ -95,6 +96,23 @@ function unavailableWarning(officer: Officer) {
   return `Hoiatus tekkis: ametnik ${officer.name} on mängust väljas ja teda ei saa suunata.`;
 }
 
+interface SceneAssessmentInput {
+  text: string;
+  assessmentStatus: IncidentAssessmentStatus;
+  requiredOfficers?: number;
+  requiresEscortPermission: boolean;
+  requiresTaserPermission: boolean;
+  requiresSeniorOfficer: boolean;
+  externalEscortRequired: boolean;
+  medicalNote?: string;
+}
+
+function nextStatusForAssessment(currentStatus: IncidentStatus, assessmentStatus: IncidentAssessmentStatus): IncidentStatus {
+  if (currentStatus === 'closed') return currentStatus;
+  if (assessmentStatus === 'under_control') return 'under_control';
+  return currentStatus === 'under_control' ? 'active' : currentStatus;
+}
+
 function emptyState(): AppState {
   return {
     role: null,
@@ -155,6 +173,14 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
         ? officer.currentBuildingId
         : null),
   }));
+  const incidents = snapshot.incidents.map((incident) => ({
+    ...incident,
+    requiresSeniorOfficer: incident.requiresSeniorOfficer ?? false,
+    updates: (incident.updates ?? []).map((update) => ({
+      ...update,
+      type: update.type ?? 'escalation',
+    })),
+  }));
 
   return {
     ...state,
@@ -166,8 +192,9 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
     classroomSnapshots: state.classroomSnapshots,
     buildings,
     officers,
+    incidents,
     buses,
-    warnings: calculateWarnings(buildings, officers, snapshot.incidents, buses),
+    warnings: calculateWarnings(buildings, officers, incidents, buses),
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
     syncMessage: supabaseConfigWarning,
   };
@@ -227,6 +254,7 @@ function snapshotWithIncident(
     requiredOfficers,
     requiresEscortPermission,
     requiresTaserPermission,
+    requiresSeniorOfficer: false,
     externalEscortRequired,
     status: 'active',
     updates: [],
@@ -255,7 +283,7 @@ function snapshotWithEscalation(
   );
   if (!incident) return null;
 
-  const update: IncidentUpdate = { id: uuidv4(), incidentId: incident.id, text, createdAt: now() };
+  const update: IncidentUpdate = { id: uuidv4(), incidentId: incident.id, type: 'escalation', text, createdAt: now() };
   const incidents = base.incidents.map((item) =>
     item.id === incident.id
       ? {
@@ -265,7 +293,55 @@ function snapshotWithEscalation(
           requiredOfficers,
           requiresEscortPermission,
           requiresTaserPermission,
+          requiresSeniorOfficer: false,
           externalEscortRequired,
+          updates: [...item.updates, update],
+        }
+      : item
+  );
+
+  return toSnapshot(finalizeState(base, appendLog({ ...base, incidents }, 'teacher', logText)));
+}
+
+function snapshotWithSceneAssessment(
+  snapshot: SimulationSnapshot,
+  incidentMatch: { sharedScenarioEventId?: string; title: string; buildingId: string },
+  assessment: SceneAssessmentInput,
+  logText: string
+): SimulationSnapshot | null {
+  const base = withSnapshot(emptyState(), snapshot);
+  if (!base.simulation) return null;
+  const incident = base.incidents.find((item) =>
+    incidentMatch.sharedScenarioEventId
+      ? item.sharedScenarioEventId === incidentMatch.sharedScenarioEventId && item.status !== 'closed'
+      : item.title === incidentMatch.title && item.buildingId === incidentMatch.buildingId && item.status !== 'closed'
+  );
+  if (!incident) return null;
+
+  const update: IncidentUpdate = {
+    id: uuidv4(),
+    incidentId: incident.id,
+    type: 'scene_assessment',
+    assessmentStatus: assessment.assessmentStatus,
+    text: assessment.text,
+    requiredOfficers: assessment.requiredOfficers ?? incident.requiredOfficers,
+    requiresEscortPermission: assessment.requiresEscortPermission,
+    requiresTaserPermission: assessment.requiresTaserPermission,
+    requiresSeniorOfficer: assessment.requiresSeniorOfficer,
+    externalEscortRequired: assessment.externalEscortRequired,
+    medicalNote: assessment.medicalNote,
+    createdAt: now(),
+  };
+  const incidents = base.incidents.map((item) =>
+    item.id === incident.id
+      ? {
+          ...item,
+          status: nextStatusForAssessment(item.status, assessment.assessmentStatus),
+          requiredOfficers: assessment.requiredOfficers ?? item.requiredOfficers,
+          requiresEscortPermission: assessment.requiresEscortPermission,
+          requiresTaserPermission: assessment.requiresTaserPermission,
+          requiresSeniorOfficer: assessment.requiresSeniorOfficer,
+          externalEscortRequired: assessment.externalEscortRequired,
           updates: [...item.updates, update],
         }
       : item
@@ -278,20 +354,47 @@ function resetSnapshot(snapshot: SimulationSnapshot, logText: string): Simulatio
   const base = withSnapshot(emptyState(), snapshot);
   if (!base.simulation) return null;
   const placeInPool = base.simulation.setupMode === 'student_places_officers';
+  const firstBuildingId = base.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID;
+  const officers = base.officers.map((officer) => {
+    const targetBuildingId = placeInPool ? RESOURCE_POOL_ID : officer.homeBuildingId ?? firstBuildingId;
+    const targetBuilding = base.buildings.find((building) => building.id === targetBuildingId);
+    return {
+      ...officer,
+      status: targetBuilding?.isResourcePool ? ('available' as const) : ('in_building' as const),
+      homeBuildingId: placeInPool ? null : officer.homeBuildingId ?? targetBuildingId,
+      currentBuildingId: targetBuildingId,
+      currentIncidentId: null,
+      currentBusId: null,
+    };
+  });
+  return toSnapshot(
+    finalizeState(
+      base,
+      {
+        ...base,
+        simulation: { ...base.simulation, status: 'setup' },
+        officers,
+        buses: createDefaultBuses(base.simulation.id),
+        incidents: [],
+        decisionLog: [logEntry(base.simulation.id, 'teacher', logText)],
+      }
+    )
+  );
+}
+
+function startSnapshot(snapshot: SimulationSnapshot, classroomExercise: ClassroomExercise | null): SimulationSnapshot | null {
+  const base = withSnapshot(emptyState(), { ...snapshot, classroomExercise });
+  if (!base.simulation || base.simulation.status !== 'setup') return null;
   return toSnapshot(
     finalizeState(
       base,
       appendLog(
         {
           ...base,
-          simulation: { ...base.simulation, status: 'setup' },
-          buildings: createDefaultBuildings(base.simulation.id),
-          officers: createDefaultOfficers(base.simulation.id, placeInPool),
-          buses: createDefaultBuses(base.simulation.id),
-          incidents: [],
+          simulation: { ...base.simulation, status: 'active' },
         },
         'teacher',
-        logText
+        'Õppejõud alustas simulatsiooni.'
       )
     )
   );
@@ -391,7 +494,7 @@ export function useSimulation() {
   }, [state.classroomExercise?.id, state.role]);
 
   const createSimulation = useCallback(
-    (name: string, setupMode: SetupMode, displayName: string) => {
+    (name: string, setupMode: SetupMode, displayName: string, initialLogText?: string) => {
       const simulationId = uuidv4();
       const teacherCode = generateTeacherCode();
       let studentCode = generateStudentCode();
@@ -422,6 +525,7 @@ export function useSimulation() {
         buses,
         incidents: [],
         decisionLog: [
+          ...(initialLogText ? [logEntry(simulationId, 'teacher', initialLogText)] : []),
           logEntry(simulationId, 'teacher', 'Simulatsioon loodud. Õppejõu ja õpilase koodid genereeritud.'),
           logEntry(simulationId, 'teacher', `Simulatsioon loodud (${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'})`),
         ],
@@ -432,6 +536,13 @@ export function useSimulation() {
     },
     [persist]
   );
+
+  const createCleanSimulation = useCallback(() => {
+    const currentName = state.simulation?.name ?? 'Valvejuhtimise simulatsioon';
+    const setupMode = state.simulation?.setupMode ?? 'teacher_assigned';
+    const displayName = state.participant?.displayName ?? 'Õppejõud';
+    createSimulation(currentName, setupMode, displayName, 'Õppejõud lõi uue puhta simulatsiooni.');
+  }, [createSimulation, state.participant?.displayName, state.simulation?.name, state.simulation?.setupMode]);
 
   const createClassroomExercise = useCallback(
     (name: string, setupMode: SetupMode, displayName: string, requestedGroupCount: number) => {
@@ -683,6 +794,9 @@ export function useSimulation() {
   const resetSimulation = useCallback(() => {
     commit((current) => {
       if (!current.simulation) return current;
+      const snapshot = toSnapshot(current);
+      const reset = snapshot ? resetSnapshot(snapshot, 'Õppejõud lähtestas simulatsiooni.') : null;
+      if (reset) return withSnapshot(current, reset);
       const placeInPool = current.simulation.setupMode === 'student_places_officers';
       return appendLog(
         {
@@ -734,7 +848,64 @@ export function useSimulation() {
     [state.classroomExercise, state.role]
   );
 
+  const resetAllClassroomGroups = useCallback(async () => {
+    const exercise = state.classroomExercise;
+    if (!exercise || state.role !== 'facilitator') return false;
+
+    const loaded = await Promise.all(exercise.groups.map((group) => loadSnapshotById(group.simulationId)));
+    const resets = loaded
+      .map((result, index) => {
+        const group = exercise.groups[index];
+        if (!group || !result.snapshot) return null;
+        return resetSnapshot(
+          { ...result.snapshot, classroomExercise: exercise },
+          `Õppejõud lähtestas grupi: ${group.groupName}.`
+        );
+      })
+      .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot));
+
+    await Promise.all(resets.map((snapshot) => saveSnapshot(snapshot)));
+    setState((current) => {
+      const currentSnapshot = resets.find((snapshot) => snapshot.simulation.id === current.simulation?.id);
+      const classroomSnapshots = resets.length > 0 ? resets : current.classroomSnapshots;
+      if (!currentSnapshot) return { ...current, classroomSnapshots };
+      return {
+        ...withSnapshot(current, currentSnapshot),
+        classroomExercise: exercise,
+        classroomSnapshots,
+      };
+    });
+    return resets.length > 0;
+  }, [state.classroomExercise, state.role]);
+
   const startSimulation = useCallback(() => {
+    const exercise = state.classroomExercise;
+    if (exercise && state.role === 'facilitator') {
+      void (async () => {
+        const loaded = await Promise.all(exercise.groups.map((group) => loadSnapshotById(group.simulationId)));
+        const startedSnapshots = loaded
+          .map((result) => (result.snapshot ? startSnapshot(result.snapshot, exercise) : null))
+          .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot));
+
+        await Promise.all(startedSnapshots.map((snapshot) => saveSnapshot(snapshot)));
+        setState((current) => {
+          const currentSnapshot = startedSnapshots.find((snapshot) => snapshot.simulation.id === current.simulation?.id);
+          const nextSnapshots = current.classroomSnapshots.map(
+            (snapshot) => startedSnapshots.find((started) => started.simulation.id === snapshot.simulation.id) ?? snapshot
+          );
+          const knownIds = new Set(nextSnapshots.map((snapshot) => snapshot.simulation.id));
+          const classroomSnapshots = [...nextSnapshots, ...startedSnapshots.filter((snapshot) => !knownIds.has(snapshot.simulation.id))];
+          if (!currentSnapshot) return { ...current, classroomSnapshots };
+          return {
+            ...withSnapshot(current, currentSnapshot),
+            classroomExercise: exercise,
+            classroomSnapshots,
+          };
+        });
+      })();
+      return;
+    }
+
     commit((current) => {
       if (!current.simulation) return current;
       if (current.simulation.status !== 'setup') return current;
@@ -744,7 +915,7 @@ export function useSimulation() {
         'Õppejõud alustas simulatsiooni.'
       );
     });
-  }, [commit]);
+  }, [commit, state.classroomExercise, state.role]);
 
   const setSetupMode = useCallback(
     (setupMode: SetupMode) => {
@@ -790,6 +961,9 @@ export function useSimulation() {
     (officerId: string, buildingId: string) => {
       commit((current) => {
         if (!current.simulation) return current;
+        if (current.role === 'commander' && current.simulation.status !== 'active') {
+          return appendLog(current, 'system', current.simulation.status === 'completed' ? 'Simulatsioon on lõpetatud.' : 'Simulatsioon ei ole veel käivitatud.');
+        }
         const officer = current.officers.find((item) => item.id === officerId);
         const building = current.buildings.find((item) => item.id === buildingId);
         if (!officer || !building) return current;
@@ -828,6 +1002,9 @@ export function useSimulation() {
     (officerId: string, incidentId: string) => {
       commit((current) => {
         if (!current.simulation) return current;
+        if (current.role === 'commander' && current.simulation.status !== 'active') {
+          return appendLog(current, 'system', current.simulation.status === 'completed' ? 'Simulatsioon on lõpetatud.' : 'Simulatsioon ei ole veel käivitatud.');
+        }
         const officer = current.officers.find((item) => item.id === officerId);
         const incident = current.incidents.find((item) => item.id === incidentId && item.status !== 'closed');
         if (!officer || !incident) return current;
@@ -861,6 +1038,9 @@ export function useSimulation() {
     (officerId: string, busId: string) => {
       commit((current) => {
         if (!current.simulation) return current;
+        if (current.role === 'commander' && current.simulation.status !== 'active') {
+          return appendLog(current, 'system', current.simulation.status === 'completed' ? 'Simulatsioon on lõpetatud.' : 'Simulatsioon ei ole veel käivitatud.');
+        }
         const officer = current.officers.find((item) => item.id === officerId);
         const bus = current.buses.find((item) => item.id === busId);
         if (!officer || !bus) return current;
@@ -1038,7 +1218,13 @@ export function useSimulation() {
         if (!current.simulation) return current;
         const incident = current.incidents.find((item) => item.id === incidentId);
         if (!incident) return current;
-        const update: IncidentUpdate = { id: uuidv4(), incidentId, text, createdAt: now() };
+        const update: IncidentUpdate = {
+          id: uuidv4(),
+          incidentId,
+          type: nextStatus === 'under_control' ? 'resolution' : 'escalation',
+          text,
+          createdAt: now(),
+        };
         const incidents = current.incidents.map((item) =>
           item.id === incidentId
             ? {
@@ -1135,6 +1321,114 @@ export function useSimulation() {
     [state]
   );
 
+  const addSceneAssessment = useCallback(
+    (incidentId: string, assessment: SceneAssessmentInput, logText?: string) => {
+      commit((current) => {
+        if (!current.simulation) return current;
+        const incident = current.incidents.find((item) => item.id === incidentId && item.status !== 'closed');
+        if (!incident) return current;
+        const update: IncidentUpdate = {
+          id: uuidv4(),
+          incidentId,
+          type: 'scene_assessment',
+          assessmentStatus: assessment.assessmentStatus,
+          text: assessment.text,
+          requiredOfficers: assessment.requiredOfficers ?? incident.requiredOfficers,
+          requiresEscortPermission: assessment.requiresEscortPermission,
+          requiresTaserPermission: assessment.requiresTaserPermission,
+          requiresSeniorOfficer: assessment.requiresSeniorOfficer,
+          externalEscortRequired: assessment.externalEscortRequired,
+          medicalNote: assessment.medicalNote,
+          createdAt: now(),
+        };
+        const incidents = current.incidents.map((item) =>
+          item.id === incidentId
+            ? {
+                ...item,
+                status: nextStatusForAssessment(item.status, assessment.assessmentStatus),
+                requiredOfficers: assessment.requiredOfficers ?? item.requiredOfficers,
+                requiresEscortPermission: assessment.requiresEscortPermission,
+                requiresTaserPermission: assessment.requiresTaserPermission,
+                requiresSeniorOfficer: assessment.requiresSeniorOfficer,
+                externalEscortRequired: assessment.externalEscortRequired,
+                updates: [...item.updates, update],
+              }
+            : item
+        );
+        return appendLog(
+          { ...current, incidents },
+          'teacher',
+          logText ?? `Õppejõud lisas kohapealse hinnangu: ${incident.title}`
+        );
+      });
+    },
+    [commit]
+  );
+
+  const addSceneAssessmentForAllClassroomGroups = useCallback(
+    async (incidentId: string, assessment: SceneAssessmentInput) => {
+      const exercise = state.classroomExercise;
+      const selectedIncident = state.incidents.find((item) => item.id === incidentId);
+      if (!exercise || state.role !== 'facilitator' || !selectedIncident) return false;
+
+      const building = state.buildings.find((item) => item.id === selectedIncident.buildingId);
+      const sharedEvent: SharedScenarioEvent = {
+        id: uuidv4(),
+        kind: 'assessment',
+        parentEventId: selectedIncident.sharedScenarioEventId,
+        title: `Kohapealne hinnang: ${selectedIncident.title}`,
+        description: assessment.text,
+        targetBuildingId: selectedIncident.buildingId,
+        targetBuildingName: building?.name ?? selectedIncident.buildingId,
+        severity: selectedIncident.severity,
+        requiredOfficers: assessment.requiredOfficers ?? selectedIncident.requiredOfficers,
+        requiresSeniorOfficer: assessment.requiresSeniorOfficer,
+        sentToAllGroups: true,
+        createdAt: now(),
+      };
+      const updatedExercise: ClassroomExercise = {
+        ...exercise,
+        sharedScenarioEvents: [sharedEvent, ...(exercise.sharedScenarioEvents ?? [])],
+      };
+
+      const loaded = await Promise.all(exercise.groups.map((group) => loadSnapshotById(group.simulationId)));
+      const updatedSnapshots = loaded
+        .map((result, index) => {
+          const snapshot = result.snapshot;
+          const group = exercise.groups[index];
+          if (!snapshot || !group) return null;
+          return snapshotWithSceneAssessment(
+            { ...snapshot, classroomExercise: updatedExercise },
+            {
+              sharedScenarioEventId: selectedIncident.sharedScenarioEventId,
+              title: selectedIncident.title,
+              buildingId: selectedIncident.buildingId,
+            },
+            assessment,
+            `Õppejõud saatis kohapealse hinnangu kõigile gruppidele: ${selectedIncident.title}`
+          );
+        })
+        .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot))
+        .map((snapshot) => ({ ...snapshot, classroomExercise: updatedExercise }));
+
+      await saveClassroomExercise(updatedExercise);
+      await Promise.all(updatedSnapshots.map((snapshot) => saveSnapshot(snapshot)));
+      setState((current) => {
+        const currentSnapshot = updatedSnapshots.find((snapshot) => snapshot.simulation.id === current.simulation?.id);
+        if (!currentSnapshot) {
+          return { ...current, classroomExercise: updatedExercise, classroomSnapshots: updatedSnapshots };
+        }
+        return {
+          ...withSnapshot(current, currentSnapshot),
+          classroomExercise: updatedExercise,
+          classroomSnapshots: updatedSnapshots,
+        };
+      });
+      return updatedSnapshots.length > 0;
+    },
+    [state]
+  );
+
   const markOfficerInjured = useCallback(
     (incidentId: string, officerId: string, logText?: string) => {
       commit((current) => {
@@ -1144,7 +1438,7 @@ export function useSimulation() {
         if (!incident || !officer) return current;
 
         const text = `Olukord eskaleerus: ametnik ${officer.name} sai vigastada ja on mängust väljas.`;
-        const update: IncidentUpdate = { id: uuidv4(), incidentId, text, createdAt: now() };
+        const update: IncidentUpdate = { id: uuidv4(), incidentId, type: 'escalation', text, createdAt: now() };
         const incidents = current.incidents.map((item) =>
           item.id === incidentId
             ? {
@@ -1342,12 +1636,14 @@ export function useSimulation() {
     state,
     activeIncidents,
     createSimulation,
+    createCleanSimulation,
     createClassroomExercise,
     joinSimulation,
     leaveSimulation,
     openClassroomGroup,
     resetSimulation,
     resetClassroomGroup,
+    resetAllClassroomGroups,
     startSimulation,
     setSetupMode,
     moveOfficerToBuilding,
@@ -1358,6 +1654,8 @@ export function useSimulation() {
     createIncidentForAllClassroomGroups,
     escalateIncident,
     escalateIncidentForAllClassroomGroups,
+    addSceneAssessment,
+    addSceneAssessmentForAllClassroomGroups,
     markOfficerInjured,
     closeIncident,
     updateBuildingMinimum,

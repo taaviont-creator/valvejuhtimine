@@ -223,6 +223,7 @@ const IncidentSummary: React.FC<{
     <div style={tagRowStyle}>
       {incident.requiresEscortPermission && <span style={tagStyle}>Saateõigus</span>}
       {incident.requiresTaserPermission && <span style={tagStyle}>EŠR õigus</span>}
+      {incident.requiresSeniorOfficer && <span style={tagStyle}>Vanemvalvur</span>}
     </div>
     {latestUpdate && <div style={latestStyle}>Viimane muutus: {latestUpdate}</div>}
   </>
@@ -246,7 +247,7 @@ const EmptyText: React.FC<{ text: string }> = ({ text }) => <div style={emptySty
 
 const emptyStyle: React.CSSProperties = {
   padding: '6px 0',
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
 };
@@ -254,7 +255,7 @@ const emptyStyle: React.CSSProperties = {
 const panelStyle: React.CSSProperties = {
   border: '1px solid var(--border-bright)',
   borderRadius: 'var(--radius-sm)',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   marginBottom: 8,
   boxShadow: 'var(--shadow-card)',
 };
@@ -263,16 +264,17 @@ const headerButtonStyle: React.CSSProperties = {
   width: '100%',
   minHeight: 34,
   padding: '9px 10px',
-  background: 'var(--bg-elevated)',
+  background: '#f2f6fa',
   border: 'none',
   borderBottom: '1px solid var(--border)',
-  color: 'var(--cyan)',
+  color: 'var(--text-primary)',
   display: 'flex',
   justifyContent: 'space-between',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
   letterSpacing: 1,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const collapseStyle: React.CSSProperties = {
@@ -296,13 +298,13 @@ const resourceBarStyle: React.CSSProperties = {
 
 const metricStyle: React.CSSProperties = {
   padding: '7px 8px',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   display: 'flex',
   justifyContent: 'space-between',
   gap: 5,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
   textTransform: 'uppercase',
@@ -321,16 +323,17 @@ const sectionStyle: React.CSSProperties = {
 
 const sectionTitleStyle: React.CSSProperties = {
   marginBottom: 5,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
   letterSpacing: 1,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const smallCardStyle: React.CSSProperties = {
   padding: 8,
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   fontSize: 11.5,
@@ -357,10 +360,11 @@ const mutedTextStyle: React.CSSProperties = {
 
 const mutedMonoStyle: React.CSSProperties = {
   flexShrink: 0,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 8,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
 const dangerTextStyle: React.CSSProperties = {
@@ -434,10 +438,11 @@ const quickButtonStyle: React.CSSProperties = {
   background: 'transparent',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 8,
   textTransform: 'uppercase',
+  fontWeight: 700,
 };
 
 const actionRowStyle: React.CSSProperties = {

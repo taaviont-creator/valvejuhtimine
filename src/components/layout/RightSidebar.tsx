@@ -9,6 +9,7 @@ import { DecisionLog } from '../log/DecisionLog';
 import { getIncidentOfficers } from '../../lib/calculations';
 
 type Tab = 'incidents' | 'warnings' | 'log';
+
 const actorLabels: Record<string, string> = {
   teacher: 'õppejõud',
   student: 'korrapidaja',
@@ -23,6 +24,7 @@ interface Props {
   decisionLog: DecisionLogEntry[];
   isFacilitator: boolean;
   onCreateIncident: () => void;
+  onAddSceneAssessment: (incidentId: string) => void;
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
   onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
@@ -48,6 +50,7 @@ export const RightSidebar: React.FC<Props> = ({
   decisionLog,
   isFacilitator,
   onCreateIncident,
+  onAddSceneAssessment,
   onEscalate,
   onCloseIncident,
   onOfficerDropToIncident,
@@ -69,12 +72,28 @@ export const RightSidebar: React.FC<Props> = ({
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const closedIncidents = incidents.filter((incident) => incident.status === 'closed');
   const latestAction = decisionLog.find((entry) => entry.actor !== 'system') ?? decisionLog[0];
+
   const closeIncident = (incident: Incident) => {
     const confirmed = window.confirm(
       `Sündmuse lõpetamisel vabastatakse sellele määratud ametnikud.\n\nVaikimisi: saada ametnikud tagasi määratud üksusesse.\n\nLõpeta sündmus "${incident.title}"?`
     );
     if (confirmed) onCloseIncident(incident.id);
   };
+
+  const renderIncidentCard = (incident: Incident, facilitator = isFacilitator) => (
+    <IncidentCard
+      key={incident.id}
+      incident={incident}
+      officers={officers}
+      buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
+      isFacilitator={facilitator}
+      onAddSceneAssessment={facilitator ? () => onAddSceneAssessment(incident.id) : undefined}
+      onEscalate={facilitator ? () => onEscalate(incident.id) : undefined}
+      onClose={facilitator ? () => closeIncident(incident) : undefined}
+      onOfficerDrop={incident.status !== 'closed' ? (officerId) => onOfficerDropToIncident?.(officerId, incident.id) : undefined}
+      onSelectOfficer={onSelectOfficer}
+    />
+  );
 
   if (!isFacilitator) {
     return (
@@ -88,6 +107,14 @@ export const RightSidebar: React.FC<Props> = ({
         </div>
 
         <div style={studentContentStyle}>
+          <StudentSection title="Aktiivsed sündmused" count={activeIncidents.length} prominent={activeIncidents.length > 0}>
+            {activeIncidents.length === 0 ? (
+              <div style={emptyStyle}>Aktiivseid sündmusi pole</div>
+            ) : (
+              activeIncidents.map((incident) => renderIncidentCard(incident, false))
+            )}
+          </StudentSection>
+
           <StudentGuidancePanel
             open={studentGuideOpen}
             onToggle={() => setStudentGuideOpen((value) => !value)}
@@ -95,24 +122,6 @@ export const RightSidebar: React.FC<Props> = ({
             officers={officers}
             warningCount={warnings.length}
           />
-
-          <StudentSection title="Aktiivsed sündmused" count={activeIncidents.length}>
-            {activeIncidents.length === 0 ? (
-              <div style={emptyStyle}>Aktiivseid sündmusi pole</div>
-            ) : (
-              activeIncidents.map((incident) => (
-                <IncidentCard
-                  key={incident.id}
-                  incident={incident}
-                  officers={officers}
-                  buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
-                  isFacilitator={false}
-                  onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
-                  onSelectOfficer={onSelectOfficer}
-                />
-              ))
-            )}
-          </StudentSection>
 
           <StudentSection title="Hoiatused" count={warnings.length} prominent={warnings.length > 0}>
             <WarningList warnings={warnings} />
@@ -129,18 +138,13 @@ export const RightSidebar: React.FC<Props> = ({
   return (
     <div style={sidebarStyle}>
       <div style={statusPanelStyle}>
-        <div style={panelLabelStyle}>{isFacilitator ? 'Korrapidaja tegevus' : 'Olukorra staatus'}</div>
+        <div style={panelLabelStyle}>Õppejõu töölaud</div>
         {latestAction ? (
           <div style={latestActionStyle}>
             <strong>{actorLabels[latestAction.actor] ?? latestAction.actor}</strong> {latestAction.text}
           </div>
         ) : (
           <div style={mutedTextStyle}>Tegevusi pole veel logitud</div>
-        )}
-        {warnings.length > 0 && (
-          <div style={warningSummaryStyle}>
-            {warnings.length} aktiivne hoiatus{warnings.length === 1 ? '' : 't'} - ava detailideks Hoiatused
-          </div>
         )}
       </div>
 
@@ -155,65 +159,53 @@ export const RightSidebar: React.FC<Props> = ({
       <div style={contentStyle}>
         {tab === 'incidents' && (
           <>
-            {isFacilitator && (
-              <>
-                <ScenarioOverviewPanel
-                  buildings={buildings}
-                  incidents={incidents}
-                  officers={officers}
-                  warnings={warnings}
-                  decisionLog={decisionLog}
-                  activatedInjectIds={activatedPreparedInjectIds}
-                  onActivateInject={(inject, buildingId) => onActivateOverviewInject?.(inject, buildingId)}
-                  onActivateInjectForAllGroups={(inject, buildingId) => onActivateOverviewInjectForAllGroups?.(inject, buildingId)}
-                  canActivateAllGroups={canActivateAllGroups}
-                  onOpenEscalation={onEscalate}
-                  onQuickEscalation={(incidentId, action) => onQuickOverviewEscalation?.(incidentId, action)}
-                  onMarkOfficerInjured={(incidentId, officerId) => onOverviewOfficerInjured?.(incidentId, officerId)}
-                  onCloseIncident={(incidentId) => onOverviewCloseIncident?.(incidentId)}
-                />
-                <PreparedInjectPanel
-                  buildings={buildings}
-                  incidents={incidents}
-                  activatedInjectIds={activatedPreparedInjectIds}
-                  onActivateInject={(inject, buildingId) => onActivatePreparedInject?.(inject, buildingId)}
-                  onActivateInjectForAllGroups={(inject, buildingId) => onActivatePreparedInjectForAllGroups?.(inject, buildingId)}
-                  canActivateAllGroups={canActivateAllGroups}
-                  onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
-                  onApplyEscalationForAllGroups={(inject, incidentId) => onApplyPreparedEscalationForAllGroups?.(inject, incidentId)}
-                />
-                <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
-                  {canActivateAllGroups ? 'Saada situatsioon kõigile gruppidele' : 'Lisa sündmus'}
-                </button>
-              </>
-            )}
-            {incidents.length === 0 && <div style={emptyStyle}>Sündmusi pole veel</div>}
-            {activeIncidents.map((incident) => (
-              <IncidentCard
-                key={incident.id}
-                incident={incident}
+            <SidebarSection title="Aktiivsed sündmused" count={activeIncidents.length} priority>
+              {activeIncidents.length === 0 ? (
+                <div style={emptyStyle}>Aktiivseid sündmusi pole</div>
+              ) : (
+                activeIncidents.map((incident) => renderIncidentCard(incident))
+              )}
+            </SidebarSection>
+
+            <SidebarSection title="Hoiatused" count={warnings.length} warning={warnings.length > 0}>
+              <WarningList warnings={warnings} />
+            </SidebarSection>
+
+            <SidebarSection title="Stsenaariumi tööriistad">
+              <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
+                {canActivateAllGroups ? 'Saada situatsioon kõigile gruppidele' : 'Lisa sündmus'}
+              </button>
+              <ScenarioOverviewPanel
+                buildings={buildings}
+                incidents={incidents}
                 officers={officers}
-                buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
-                isFacilitator={isFacilitator}
-                onEscalate={() => onEscalate(incident.id)}
-                onClose={() => closeIncident(incident)}
-                onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
-                onSelectOfficer={onSelectOfficer}
+                warnings={warnings}
+                decisionLog={decisionLog}
+                activatedInjectIds={activatedPreparedInjectIds}
+                onActivateInject={(inject, buildingId) => onActivateOverviewInject?.(inject, buildingId)}
+                onActivateInjectForAllGroups={(inject, buildingId) => onActivateOverviewInjectForAllGroups?.(inject, buildingId)}
+                canActivateAllGroups={canActivateAllGroups}
+                onOpenEscalation={onEscalate}
+                onQuickEscalation={(incidentId, action) => onQuickOverviewEscalation?.(incidentId, action)}
+                onMarkOfficerInjured={(incidentId, officerId) => onOverviewOfficerInjured?.(incidentId, officerId)}
+                onCloseIncident={(incidentId) => onOverviewCloseIncident?.(incidentId)}
               />
-            ))}
+              <PreparedInjectPanel
+                buildings={buildings}
+                incidents={incidents}
+                activatedInjectIds={activatedPreparedInjectIds}
+                onActivateInject={(inject, buildingId) => onActivatePreparedInject?.(inject, buildingId)}
+                onActivateInjectForAllGroups={(inject, buildingId) => onActivatePreparedInjectForAllGroups?.(inject, buildingId)}
+                canActivateAllGroups={canActivateAllGroups}
+                onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
+                onApplyEscalationForAllGroups={(inject, incidentId) => onApplyPreparedEscalationForAllGroups?.(inject, incidentId)}
+              />
+            </SidebarSection>
+
             {closedIncidents.length > 0 && (
-              <>
-                <div style={closedLabelStyle}>Lõpetatud ({closedIncidents.length})</div>
-                {closedIncidents.map((incident) => (
-                  <IncidentCard
-                    key={incident.id}
-                    incident={incident}
-                    officers={officers}
-                    buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
-                    isFacilitator={isFacilitator}
-                  />
-                ))}
-              </>
+              <SidebarSection title="Lõpetatud sündmused" count={closedIncidents.length}>
+                {closedIncidents.map((incident) => renderIncidentCard(incident))}
+              </SidebarSection>
             )}
           </>
         )}
@@ -272,11 +264,27 @@ const StudentSection: React.FC<{ title: string; count: number; prominent?: boole
   children,
 }) => (
   <section style={studentSectionStyle(prominent)}>
-    <div style={studentSectionTitleStyle}>
+    <div style={sectionTitleRowStyle(prominent)}>
       <span>{title}</span>
       <strong>{count}</strong>
     </div>
     {children}
+  </section>
+);
+
+const SidebarSection: React.FC<{ title: string; count?: number; priority?: boolean; warning?: boolean; children: React.ReactNode }> = ({
+  title,
+  count,
+  priority = false,
+  warning = false,
+  children,
+}) => (
+  <section style={teacherSectionStyle(priority, warning)}>
+    <div style={sectionTitleRowStyle(priority || warning)}>
+      <span>{title}</span>
+      {count !== undefined && <strong>{count}</strong>}
+    </div>
+    <div style={sectionBodyStyle}>{children}</div>
   </section>
 );
 
@@ -286,16 +294,16 @@ const sidebarStyle: React.CSSProperties = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
-  background: 'var(--bg-panel)',
-  borderLeft: '1px solid var(--border)',
+  background: '#eef3f8',
+  borderLeft: '1px solid var(--border-bright)',
   overflow: 'hidden',
   flexShrink: 0,
 };
 
 const statusPanelStyle: React.CSSProperties = {
   padding: 10,
-  borderBottom: '1px solid var(--border)',
-  background: 'var(--bg-panel)',
+  borderBottom: '1px solid var(--border-bright)',
+  background: '#f8fafc',
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
@@ -303,8 +311,8 @@ const statusPanelStyle: React.CSSProperties = {
 
 const studentHeaderStyle: React.CSSProperties = {
   padding: 12,
-  borderBottom: '1px solid var(--border)',
-  background: 'var(--bg-panel)',
+  borderBottom: '1px solid var(--border-bright)',
+  background: '#f8fafc',
   display: 'flex',
   flexDirection: 'column',
   gap: 7,
@@ -314,7 +322,7 @@ const studentSummaryStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: 6,
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
   textTransform: 'uppercase',
@@ -323,52 +331,44 @@ const studentSummaryStyle: React.CSSProperties = {
 const panelLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   letterSpacing: 1.2,
   textTransform: 'uppercase',
+  fontWeight: 700,
 };
 
 const latestActionStyle: React.CSSProperties = {
   padding: '9px 10px',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-primary)',
   fontSize: 12,
   lineHeight: 1.45,
 };
 
 const mutedTextStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   fontSize: 11,
-};
-
-const warningSummaryStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  background: 'rgba(185,67,77,0.08)',
-  border: '1px solid rgba(185,67,77,0.28)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--red)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  lineHeight: 1.3,
 };
 
 const tabsStyle: React.CSSProperties = {
   display: 'flex',
-  borderBottom: '1px solid var(--border)',
+  borderBottom: '1px solid var(--border-bright)',
+  background: '#f8fafc',
   flexShrink: 0,
 };
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
   flex: 1,
   padding: '10px 4px',
-  background: active ? 'var(--bg-card)' : 'transparent',
+  background: active ? '#ffffff' : 'transparent',
   border: 'none',
   borderBottom: `2px solid ${active ? 'var(--cyan)' : 'transparent'}`,
-  color: active ? 'var(--cyan)' : 'var(--text-muted)',
+  color: active ? 'var(--cyan)' : 'var(--text-secondary)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 8,
+  fontSize: 8.5,
+  fontWeight: 700,
   letterSpacing: 0.5,
   textTransform: 'uppercase',
 });
@@ -380,7 +380,7 @@ const contentStyle: React.CSSProperties = {
   padding: 10,
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
+  gap: 10,
 };
 
 const studentContentStyle: React.CSSProperties = {
@@ -390,14 +390,56 @@ const studentContentStyle: React.CSSProperties = {
   padding: 10,
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
+  gap: 10,
+};
+
+const teacherSectionStyle = (priority: boolean, warning: boolean): React.CSSProperties => ({
+  border: `1px solid ${warning ? 'rgba(185,67,77,0.34)' : priority ? 'var(--cyan-dim)' : 'var(--border)'}`,
+  borderLeft: `3px solid ${warning ? 'var(--red)' : priority ? 'var(--cyan)' : 'var(--border-bright)'}`,
+  borderRadius: 'var(--radius-sm)',
+  background: '#ffffff',
+  padding: 9,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 7,
+  boxShadow: priority ? '0 4px 14px rgba(31,45,61,0.10)' : 'var(--shadow-card)',
+});
+
+const studentSectionStyle = (prominent: boolean): React.CSSProperties => ({
+  border: `1px solid ${prominent ? 'var(--cyan-dim)' : 'var(--border)'}`,
+  borderLeft: `3px solid ${prominent ? 'var(--cyan)' : 'var(--border-bright)'}`,
+  borderRadius: 'var(--radius-sm)',
+  background: '#ffffff',
+  padding: 9,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 7,
+  boxShadow: prominent ? '0 4px 14px rgba(31,45,61,0.10)' : 'var(--shadow-card)',
+});
+
+const sectionTitleRowStyle = (prominent: boolean): React.CSSProperties => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  color: prominent ? 'var(--text-primary)' : 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10.5,
+  fontWeight: 800,
+  letterSpacing: 1,
+  textTransform: 'uppercase',
+});
+
+const sectionBodyStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 7,
 };
 
 const guidanceStyle: React.CSSProperties = {
-  border: '1px solid var(--cyan-dim)',
-  borderLeft: '3px solid var(--cyan)',
+  border: '1px solid var(--border)',
+  borderLeft: '3px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(34,121,157,0.06)',
+  background: '#ffffff',
   overflow: 'hidden',
 };
 
@@ -408,20 +450,22 @@ const guidanceHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: 8,
-  background: 'transparent',
+  background: '#f2f6fa',
   border: 'none',
-  color: 'var(--cyan)',
+  borderBottom: '1px solid var(--border)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
+  fontWeight: 700,
   letterSpacing: 1,
   textTransform: 'uppercase',
 };
 
 const guidanceBodyStyle: React.CSSProperties = {
-  padding: '0 10px 10px',
-  color: 'var(--text-secondary)',
-  fontSize: 11.5,
-  lineHeight: 1.35,
+  padding: '10px',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  lineHeight: 1.4,
 };
 
 const guidanceListStyle: React.CSSProperties = {
@@ -431,52 +475,20 @@ const guidanceListStyle: React.CSSProperties = {
 
 const guidanceHintStyle: React.CSSProperties = {
   padding: '7px 8px',
-  background: 'var(--bg-card)',
+  background: '#f8fafc',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--amber)',
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
-  lineHeight: 1.3,
-};
-
-const studentSectionStyle = (prominent: boolean): React.CSSProperties => ({
-  border: `1px solid ${prominent ? 'rgba(185,67,77,0.28)' : 'var(--border)'}`,
-  borderLeft: `3px solid ${prominent ? 'var(--red)' : 'var(--cyan-dim)'}`,
-  borderRadius: 'var(--radius-sm)',
-  background: prominent ? 'rgba(185,67,77,0.055)' : 'var(--bg-card)',
-  padding: 9,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-});
-
-const studentSectionTitleStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  color: 'var(--cyan)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10.5,
-  letterSpacing: 1,
-  textTransform: 'uppercase',
+  lineHeight: 1.35,
 };
 
 const emptyStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  color: 'var(--text-muted)',
-  padding: '8px 0',
-};
-
-const closedLabelStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  color: 'var(--text-muted)',
-  letterSpacing: 1,
-  marginTop: 8,
-  marginBottom: 2,
-  textTransform: 'uppercase',
+  fontSize: 10.5,
+  color: 'var(--text-secondary)',
+  padding: '7px 0',
 };
 
 const createIncidentButtonStyle: React.CSSProperties = {
@@ -487,6 +499,7 @@ const createIncidentButtonStyle: React.CSSProperties = {
   color: 'var(--cyan)',
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
+  fontWeight: 700,
   letterSpacing: 0.8,
   textTransform: 'uppercase',
 };

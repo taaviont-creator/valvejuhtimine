@@ -1,13 +1,13 @@
 /* styles/globals.css */
 :root {
   --bg-base: #e9eef4;
-  --bg-panel: #f7f9fc;
+  --bg-panel: #f4f7fb;
   --bg-card: #ffffff;
-  --bg-card-hover: #eef4fb;
-  --bg-elevated: #edf3f9;
+  --bg-card-hover: #e8eff7;
+  --bg-elevated: #e9f0f7;
 
-  --border: #d4dde8;
-  --border-bright: #b8c6d6;
+  --border: #c7d2df;
+  --border-bright: #9fb0c2;
 
   --cyan: #22799d;
   --cyan-dim: #6f9db6;
@@ -22,10 +22,10 @@
   --red: #b9434d;
   --red-dim: #d28b91;
 
-  --text-primary: #1e2936;
-  --text-secondary: #50657a;
-  --text-muted: #748296;
-  --text-mono: #40556b;
+  --text-primary: #172331;
+  --text-secondary: #35485c;
+  --text-muted: #5f7185;
+  --text-mono: #2f4358;
 
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'Barlow', sans-serif;

@@ -66,11 +66,26 @@ export interface Officer {
 
 export type IncidentStatus = 'active' | 'escalated' | 'under_control' | 'closed';
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentUpdateType = 'initial_report' | 'scene_assessment' | 'escalation' | 'resolution';
+export type IncidentAssessmentStatus =
+  | 'simpler'
+  | 'matches_initial'
+  | 'more_complex'
+  | 'under_control'
+  | 'needs_resources';
 
 export interface IncidentUpdate {
   id: string;
   incidentId: string;
+  type?: IncidentUpdateType;
+  assessmentStatus?: IncidentAssessmentStatus;
   text: string;
+  requiredOfficers?: number;
+  requiresEscortPermission?: boolean;
+  requiresTaserPermission?: boolean;
+  requiresSeniorOfficer?: boolean;
+  externalEscortRequired?: boolean;
+  medicalNote?: string;
   createdAt: string;
 }
 
@@ -85,6 +100,7 @@ export interface Incident {
   requiredOfficers: number;
   requiresEscortPermission: boolean;
   requiresTaserPermission: boolean;
+  requiresSeniorOfficer?: boolean;
   externalEscortRequired: boolean;
   status: IncidentStatus;
   updates: IncidentUpdate[];
@@ -116,7 +132,7 @@ export interface ClassroomGroup {
   teacherCode: string;
 }
 
-export type SharedScenarioEventKind = 'incident' | 'escalation';
+export type SharedScenarioEventKind = 'incident' | 'escalation' | 'assessment';
 
 export interface SharedScenarioEvent {
   id: string;
@@ -127,6 +143,7 @@ export interface SharedScenarioEvent {
   targetBuildingName: string;
   severity: IncidentSeverity;
   requiredOfficers: number;
+  requiresSeniorOfficer?: boolean;
   sentToAllGroups: boolean;
   parentEventId?: string;
   createdAt: string;
@@ -146,6 +163,7 @@ export type WarningType =
   | 'building_below_minimum'
   | 'missing_escort_permission'
   | 'missing_taser_permission'
+  | 'missing_senior_officer'
   | 'incident_understaffed'
   | 'incident_unassigned'
   | 'bus_understaffed'

@@ -6,11 +6,13 @@ import { RightSidebar } from '../components/layout/RightSidebar';
 import { FacilityMap } from '../components/map/FacilityMap';
 import { IncidentForm } from '../components/incidents/IncidentForm';
 import { EscalateForm } from '../components/incidents/EscalateForm';
+import { SceneAssessmentForm, SceneAssessmentPayload } from '../components/incidents/SceneAssessmentForm';
 import { OverviewEscalationAction } from '../components/incidents/ScenarioOverviewPanel';
 import { ClassroomGroupOverview } from '../components/classroom/ClassroomGroupOverview';
 import { SharingToolsPanel } from '../components/sharing/SharingToolsPanel';
+import { TestingResetPanel } from '../components/testing/TestingResetPanel';
 import { useSimulation } from '../hooks/useSimulation';
-import { IncidentSeverity } from '../models';
+import { IncidentSeverity, Simulation } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
 
 const severityRank: Record<IncidentSeverity, number> = {
@@ -28,6 +30,7 @@ export const App: React.FC = () => {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [incidentFormBuildingId, setIncidentFormBuildingId] = useState<string | null>(null);
+  const [sceneAssessmentIncidentId, setSceneAssessmentIncidentId] = useState<string | null>(null);
   const [escalateIncidentId, setEscalateIncidentId] = useState<string | null>(null);
   const [activatedPreparedInjectIds, setActivatedPreparedInjectIds] = useState<string[]>([]);
 
@@ -44,7 +47,16 @@ export const App: React.FC = () => {
   }
 
   const isFacilitator = state.role === 'facilitator';
+  const simulation = state.simulation;
+  const studentIsWaiting = !isFacilitator && simulation.status !== 'active';
+  const blockedStudentMessage = simulation.status === 'completed' ? 'Simulatsioon on lõpetatud.' : 'Simulatsioon ei ole veel käivitatud.';
+  const ensureStudentCanAct = () => {
+    if (isFacilitator || simulation.status === 'active') return true;
+    window.alert(blockedStudentMessage);
+    return false;
+  };
   const confirmReassignment = (officerId: string) => {
+    if (!ensureStudentCanAct()) return false;
     const officer = state.officers.find((item) => item.id === officerId);
     if (!officer) return false;
     if (officer.status === 'unavailable') {
@@ -206,6 +218,18 @@ export const App: React.FC = () => {
     );
     if (confirmed) sim.closeIncident(incidentId, `Õppejõud lõpetas sündmuse ülevaatest: ${incident.title}`);
   };
+  const addSceneAssessmentToIncident = (incidentId: string, assessment: SceneAssessmentPayload) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    sim.addSceneAssessment(incidentId, assessment, `Õppejõud lisas kohapealse hinnangu: ${incident.title}`);
+    setSceneAssessmentIncidentId(null);
+  };
+  const addSceneAssessmentToAllGroups = (incidentId: string, assessment: SceneAssessmentPayload) => {
+    const incident = state.incidents.find((item) => item.id === incidentId);
+    if (!incident) return;
+    void sim.addSceneAssessmentForAllClassroomGroups(incidentId, assessment);
+    setSceneAssessmentIncidentId(null);
+  };
   const resetCurrentSimulation = () => {
     if (window.confirm('Kas oled kindel? See taastab simulatsiooni algseisu.')) {
       sim.resetSimulation();
@@ -214,6 +238,30 @@ export const App: React.FC = () => {
   const resetClassroomGroup = (simulationId: string) => {
     void sim.resetClassroomGroup(simulationId);
   };
+  const currentSimulationId = state.simulation.id;
+  const resetSelectedClassroomGroup = () => {
+    void sim.resetClassroomGroup(currentSimulationId);
+  };
+  const resetAllClassroomGroups = () => {
+    void sim.resetAllClassroomGroups();
+  };
+
+  if (studentIsWaiting) {
+    return (
+      <div style={appShellStyle}>
+        <Header
+          role={state.role}
+          simulation={state.simulation}
+          classroomExercise={state.classroomExercise}
+          warnings={[]}
+          syncStatus={state.syncStatus}
+          syncMessage={state.syncMessage}
+          onBack={sim.leaveSimulation}
+        />
+        <StudentWaitingView simulation={state.simulation} />
+      </div>
+    );
+  }
 
   return (
     <div style={appShellStyle}>
@@ -232,8 +280,17 @@ export const App: React.FC = () => {
         <SharingToolsPanel
           simulation={state.simulation}
           classroomExercise={state.classroomExercise}
-          onResetSimulation={resetCurrentSimulation}
-          onResetGroup={resetClassroomGroup}
+        />
+      )}
+
+      {isFacilitator && (
+        <TestingResetPanel
+          simulation={state.simulation}
+          classroomExercise={state.classroomExercise}
+          onCreateCleanSimulation={sim.createCleanSimulation}
+          onResetSimulation={sim.resetSimulation}
+          onResetSelectedGroup={resetSelectedClassroomGroup}
+          onResetAllGroups={resetAllClassroomGroups}
         />
       )}
 
@@ -297,6 +354,7 @@ export const App: React.FC = () => {
             const fallbackBuilding = state.buildings.find((building) => !building.isResourcePool)?.id ?? null;
             setIncidentFormBuildingId(selectedBuildingId ?? fallbackBuilding);
           }}
+          onAddSceneAssessment={setSceneAssessmentIncidentId}
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
           onOfficerDropToIncident={assignDroppedOfficerToIncident}
@@ -331,6 +389,23 @@ export const App: React.FC = () => {
         />
       )}
 
+      {sceneAssessmentIncidentId && (() => {
+        const incident = state.incidents.find((item) => item.id === sceneAssessmentIncidentId);
+        if (!incident) return null;
+        return (
+          <SceneAssessmentForm
+            incident={incident}
+            onSubmit={(assessment) => addSceneAssessmentToIncident(sceneAssessmentIncidentId, assessment)}
+            onSubmitAllGroups={
+              state.classroomExercise
+                ? (assessment) => addSceneAssessmentToAllGroups(sceneAssessmentIncidentId, assessment)
+                : undefined
+            }
+            onCancel={() => setSceneAssessmentIncidentId(null)}
+          />
+        );
+      })()}
+
       {escalateIncidentId && (() => {
         const incident = state.incidents.find((item) => item.id === escalateIncidentId);
         if (!incident) return null;
@@ -363,6 +438,31 @@ export const App: React.FC = () => {
   );
 };
 
+const StudentWaitingView: React.FC<{ simulation: Simulation }> = ({ simulation }) => {
+  const completed = simulation.status === 'completed';
+  return (
+    <main style={waitingShellStyle}>
+      <section style={waitingCardStyle}>
+        <div style={waitingRoleStyle}>Korrapidaja / juht</div>
+        <h1 style={waitingTitleStyle}>{simulation.name}</h1>
+        {simulation.classroomGroupName && <div style={waitingGroupStyle}>{simulation.classroomGroupName}</div>}
+        {completed ? (
+          <>
+            <p style={waitingLeadStyle}>Simulatsioon on lõpetatud.</p>
+            <p style={waitingTextStyle}>Õppejõud saab vaadata kokkuvõtet ja logisid.</p>
+          </>
+        ) : (
+          <>
+            <p style={waitingLeadStyle}>Simulatsioon ei ole veel käivitatud.</p>
+            <p style={waitingTextStyle}>Oota õppejõu märguannet.</p>
+            <p style={waitingTextStyle}>Kui simulatsioon algab, avaneb korrapidaja töölaud automaatselt.</p>
+          </>
+        )}
+      </section>
+    </main>
+  );
+};
+
 const appShellStyle: React.CSSProperties = {
   minHeight: '100vh',
   display: 'flex',
@@ -389,6 +489,57 @@ const mapColumnStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-md)',
   overflow: 'hidden',
   background: 'var(--bg-base)',
+};
+
+const waitingShellStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+};
+
+const waitingCardStyle: React.CSSProperties = {
+  width: 'min(560px, 100%)',
+  background: 'var(--bg-panel)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  padding: 24,
+  boxShadow: 'var(--shadow-card)',
+};
+
+const waitingRoleStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  color: 'var(--cyan)',
+  textTransform: 'uppercase',
+  letterSpacing: 1.4,
+};
+
+const waitingTitleStyle: React.CSSProperties = {
+  margin: '8px 0 6px',
+  fontFamily: 'var(--font-display)',
+  fontSize: 28,
+  color: 'var(--text-primary)',
+};
+
+const waitingGroupStyle: React.CSSProperties = {
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  marginBottom: 14,
+};
+
+const waitingLeadStyle: React.CSSProperties = {
+  margin: '10px 0 4px',
+  color: 'var(--text-primary)',
+  fontSize: 18,
+  fontWeight: 700,
+};
+
+const waitingTextStyle: React.CSSProperties = {
+  margin: '5px 0',
+  color: 'var(--text-secondary)',
+  fontSize: 14,
 };
 
 export default App;

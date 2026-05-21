@@ -1,5 +1,5 @@
 import React from 'react';
-import { Incident, Officer } from '../../models';
+import { Incident, IncidentAssessmentStatus, IncidentUpdate, Officer } from '../../models';
 import { getIncidentOfficers } from '../../lib/calculations';
 import { OfficerMarker } from '../officers/OfficerMarker';
 
@@ -24,11 +24,20 @@ const severityLabels: Record<string, string> = {
   critical: 'Kriitiline',
 };
 
+const assessmentStatusLabels: Record<IncidentAssessmentStatus, string> = {
+  simpler: 'Lihtsam kui esmateade',
+  matches_initial: 'Vastab esmateatele',
+  more_complex: 'Keerulisem kui esmateade',
+  under_control: 'Kontrolli all',
+  needs_resources: 'Vajab lisaressurssi',
+};
+
 interface Props {
   incident: Incident;
   officers: Officer[];
   buildingName: string;
   isFacilitator: boolean;
+  onAddSceneAssessment?: () => void;
   onEscalate?: () => void;
   onClose?: () => void;
   onOfficerDrop?: (officerId: string) => void;
@@ -40,6 +49,7 @@ export const IncidentCard: React.FC<Props> = ({
   officers,
   buildingName,
   isFacilitator,
+  onAddSceneAssessment,
   onEscalate,
   onClose,
   onOfficerDrop,
@@ -50,6 +60,9 @@ export const IncidentCard: React.FC<Props> = ({
   const color = severityColors[incident.severity];
   const escortCount = assigned.filter((officer) => officer.hasEscortPermission).length;
   const taserCount = assigned.filter((officer) => officer.hasTaserPermission).length;
+  const seniorCount = assigned.filter((officer) => officer.role === 'vanemvalvur').length;
+  const sceneAssessments = incident.updates.filter((update) => update.type === 'scene_assessment');
+  const latestAssessment = sceneAssessments[sceneAssessments.length - 1];
   const latestUpdate = incident.updates[incident.updates.length - 1];
   const unmetRequirement = assigned.length < incident.requiredOfficers;
   const isNewIncident = incident.status !== 'closed' && Date.now() - new Date(incident.createdAt).getTime() < 5 * 60 * 1000;
@@ -76,13 +89,35 @@ export const IncidentCard: React.FC<Props> = ({
 
         <div style={locationStyle}>Asukoht: {buildingName}</div>
 
-        <div style={{ display: 'flex', gap: 5, marginTop: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ ...resourceStyle, color: assigned.length >= incident.requiredOfficers ? 'var(--green)' : 'var(--red)' }}>
-            Määratud {assigned.length} / Vajalik {incident.requiredOfficers}
-          </span>
-          <Tag color={incident.requiresEscortPermission ? 'var(--green)' : 'var(--text-muted)'} text={incident.requiresEscortPermission ? `Saateõigus ${escortCount}` : 'Saateõigust ei nõua'} />
-          <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `EŠR õigus ${taserCount}` : 'EŠR ei nõua'} />
-          {incident.externalEscortRequired && <Tag color="#ff99cc" text="Väljaviimine" />}
+        <div style={initialReportStyle}>
+          <span style={miniLabelStyle}>Esmateade</span>
+          <div>{incident.description || 'Esmateate kirjeldus puudub.'}</div>
+        </div>
+
+        <div style={requirementPanelStyle}>
+          <span style={miniLabelStyle}>Praegune nõue</span>
+          <div style={{ display: 'flex', gap: 5, marginTop: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ ...resourceStyle, color: assigned.length >= incident.requiredOfficers ? 'var(--green)' : 'var(--red)' }}>
+              Määratud {assigned.length} / Vajalik {incident.requiredOfficers}
+            </span>
+            <Tag color={incident.requiresEscortPermission ? 'var(--green)' : 'var(--text-muted)'} text={incident.requiresEscortPermission ? `Saateõigus ${escortCount}` : 'Saateõigust ei nõua'} />
+            <Tag color={incident.requiresTaserPermission ? 'var(--amber)' : 'var(--text-muted)'} text={incident.requiresTaserPermission ? `EŠR õigus ${taserCount}` : 'EŠR ei nõua'} />
+            <Tag color={incident.requiresSeniorOfficer ? 'var(--cyan)' : 'var(--text-muted)'} text={incident.requiresSeniorOfficer ? `Vanemvalvur ${seniorCount}` : 'Vanemvalvurit ei nõua'} />
+            {incident.externalEscortRequired && <Tag color="#ff99cc" text="Väljaviimine" />}
+          </div>
+        </div>
+
+        <div style={assessmentStyle(Boolean(latestAssessment))}>
+          <span style={miniLabelStyle}>Kohapealne hinnang</span>
+          {latestAssessment ? (
+            <>
+              <div style={assessmentTextStyle}>Viimane hinnang: {latestAssessment.text}</div>
+              <div style={assessmentMetaStyle}>{assessmentStatusLabels[latestAssessment.assessmentStatus ?? 'matches_initial']}</div>
+              {latestAssessment.medicalNote && <div style={assessmentMetaStyle}>Abi märkus: {latestAssessment.medicalNote}</div>}
+            </>
+          ) : (
+            <div style={emptyAssessmentStyle}>Kohapealset hinnangut pole veel lisatud.</div>
+          )}
         </div>
 
         <div style={assignedSummaryStyle}>
@@ -107,7 +142,7 @@ export const IncidentCard: React.FC<Props> = ({
           )}
         </div>
 
-        {latestUpdate && (
+        {latestUpdate && latestUpdate.id !== latestAssessment?.id && (
           <div style={latestUpdateStyle}>
             Viimane muutus: {latestUpdate.text}
           </div>
@@ -116,21 +151,22 @@ export const IncidentCard: React.FC<Props> = ({
 
       {expanded && (
         <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-          {incident.description && <p style={descriptionStyle}>{incident.description}</p>}
-
           {incident.updates.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               {incident.updates.map((update) => (
-                <div key={update.id} style={updateStyle}>{update.text}</div>
+                <div key={update.id} style={updateStyleFor(update)}>
+                  <strong>{updateLabel(update)}:</strong> {update.text}
+                  {update.medicalNote && <div>Abi märkus: {update.medicalNote}</div>}
+                </div>
               ))}
             </div>
           )}
-
         </div>
       )}
 
       {isFacilitator && incident.status !== 'closed' && (
         <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <button onClick={onAddSceneAssessment} style={{ ...actionButtonStyle, color: 'var(--cyan)', borderColor: 'var(--cyan)' }}>Lisa kohapealne hinnang</button>
           <button onClick={onEscalate} style={{ ...actionButtonStyle, color: 'var(--amber)', borderColor: 'var(--amber)' }}>Lisa eskalatsioon</button>
           <button onClick={onClose} style={actionButtonStyle}>Lõpeta sündmus</button>
         </div>
@@ -154,14 +190,21 @@ const Tag: React.FC<{ color: string; text: string }> = ({ color, text }) => (
   </span>
 );
 
+const updateLabel = (update: IncidentUpdate) => {
+  if (update.type === 'scene_assessment') return 'Kohapealne hinnang';
+  if (update.type === 'resolution') return 'Lahendamise info';
+  if (update.type === 'initial_report') return 'Esmateade';
+  return 'Eskalatsioon / olukorra muutus';
+};
+
 const cardStyle = (incident: Incident, color: string): React.CSSProperties => ({
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: `1px solid ${incident.status === 'escalated' ? 'var(--red-dim)' : incident.status === 'closed' ? 'var(--border)' : 'var(--border-bright)'}`,
   borderLeft: `4px solid ${incident.status === 'closed' ? 'var(--text-muted)' : color}`,
   borderRadius: 'var(--radius-sm)',
   padding: '10px 11px',
   opacity: incident.status === 'closed' ? 0.55 : 1,
-  boxShadow: 'var(--shadow-card)',
+  boxShadow: '0 3px 12px rgba(31,45,61,0.10)',
 });
 
 const titleTextStyle = (closed: boolean): React.CSSProperties => ({
@@ -204,8 +247,27 @@ const severityStyle: React.CSSProperties = {
 const locationStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 10.5,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   marginTop: 4,
+};
+
+const initialReportStyle: React.CSSProperties = {
+  marginTop: 7,
+  padding: '7px 8px',
+  background: '#f6f8fb',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  fontSize: 11.5,
+  lineHeight: 1.4,
+};
+
+const requirementPanelStyle: React.CSSProperties = {
+  marginTop: 7,
+  padding: '7px 8px',
+  background: '#f5f9fc',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
 };
 
 const resourceStyle: React.CSSProperties = {
@@ -213,28 +275,48 @@ const resourceStyle: React.CSSProperties = {
   fontSize: 10.5,
 };
 
-const descriptionStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--text-secondary)',
-  marginBottom: 8,
-  lineHeight: 1.5,
+const assessmentStyle = (hasAssessment: boolean): React.CSSProperties => ({
+  marginTop: 7,
+  padding: '7px 8px',
+  background: hasAssessment ? 'rgba(34,121,157,0.10)' : '#f6f8fb',
+  border: `1px solid ${hasAssessment ? 'rgba(34,121,157,0.24)' : 'rgba(80,101,122,0.15)'}`,
+  borderLeft: `3px solid ${hasAssessment ? 'var(--cyan)' : 'var(--border-bright)'}`,
+  borderRadius: 'var(--radius-sm)',
+});
+
+const assessmentTextStyle: React.CSSProperties = {
+  color: 'var(--text-primary)',
+  fontSize: 11.5,
+  lineHeight: 1.4,
 };
 
-const updateStyle: React.CSSProperties = {
+const assessmentMetaStyle: React.CSSProperties = {
+  marginTop: 3,
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9.5,
+};
+
+const emptyAssessmentStyle: React.CSSProperties = {
+  color: 'var(--text-secondary)',
+  fontSize: 11,
+};
+
+const updateStyleFor = (update: IncidentUpdate): React.CSSProperties => ({
   fontSize: 11.5,
-  color: 'var(--amber)',
-  background: 'rgba(166,111,31,0.07)',
-  border: '1px solid rgba(166,111,31,0.20)',
+  color: update.type === 'scene_assessment' ? 'var(--cyan)' : 'var(--amber)',
+  background: update.type === 'scene_assessment' ? 'rgba(34,121,157,0.07)' : 'rgba(166,111,31,0.07)',
+  border: `1px solid ${update.type === 'scene_assessment' ? 'rgba(34,121,157,0.20)' : 'rgba(166,111,31,0.20)'}`,
   borderRadius: 'var(--radius-sm)',
   padding: '6px 8px',
   marginBottom: 4,
-};
+});
 
 const assignedSummaryStyle: React.CSSProperties = {
   marginTop: 8,
   padding: '7px 8px',
-  background: 'rgba(34,121,157,0.06)',
-  border: '1px solid rgba(34,121,157,0.18)',
+  background: '#f5f9fc',
+  border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
 };
 
@@ -257,12 +339,14 @@ const latestUpdateStyle: React.CSSProperties = {
 };
 
 const miniLabelStyle: React.CSSProperties = {
+  display: 'block',
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   marginBottom: 4,
   textTransform: 'uppercase',
   letterSpacing: 1,
+  fontWeight: 800,
 };
 
 const emptyStyle: React.CSSProperties = {
@@ -280,4 +364,5 @@ const actionButtonStyle: React.CSSProperties = {
   fontSize: 10,
   fontFamily: 'var(--font-mono)',
   textTransform: 'uppercase',
+  fontWeight: 700,
 };

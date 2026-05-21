@@ -29,7 +29,7 @@ export const DecisionLog: React.FC<Props> = ({ entries }) => {
         <div key={entry.id} style={entryStyle}>
           <span style={timeStyle}>{formatTime(entry.createdAt)}</span>
           <span style={{ ...actorStyle, color: actorColors[entry.actor] }}>{actorLabels[entry.actor]}</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{entry.text}</span>
+          <span style={{ color: 'var(--text-primary)' }}>{entry.text}</span>
         </div>
       ))}
     </div>
@@ -39,7 +39,7 @@ export const DecisionLog: React.FC<Props> = ({ entries }) => {
 const emptyStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   padding: '8px 0',
 };
 
@@ -48,7 +48,7 @@ const entryStyle: React.CSSProperties = {
   gap: 7,
   padding: '7px 8px',
   borderRadius: 'var(--radius-sm)',
-  background: 'var(--bg-card)',
+  background: '#ffffff',
   border: '1px solid var(--border)',
   fontSize: 11.5,
   lineHeight: 1.4,
@@ -57,7 +57,7 @@ const entryStyle: React.CSSProperties = {
 const timeStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 9,
-  color: 'var(--text-muted)',
+  color: 'var(--text-secondary)',
   whiteSpace: 'nowrap',
   paddingTop: 1,
 };
@@ -69,4 +69,5 @@ const actorStyle: React.CSSProperties = {
   paddingTop: 1,
   minWidth: 43,
   textTransform: 'uppercase',
+  fontWeight: 800,
 };
