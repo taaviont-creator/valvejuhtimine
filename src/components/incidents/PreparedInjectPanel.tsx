@@ -147,11 +147,11 @@ export const PreparedInjectPanel: React.FC<Props> = ({
                 </button>
                 {canActivateAllGroups && (
                   <button onClick={() => activateInjectForAllGroups(inject)} style={primaryButtonStyle}>
-                    Käivita kõigile gruppidele
+                    Saada kõigile gruppidele
                   </button>
                 )}
                 <button onClick={() => activateInject(inject)} style={canActivateAllGroups ? secondaryButtonStyle : primaryButtonStyle}>
-                  {canActivateAllGroups ? 'Käivita ainult valitud grupis' : 'Käivita sündmus'}
+                  {canActivateAllGroups ? 'Lisa ainult sellele grupile' : 'Käivita sündmus'}
                 </button>
                 {inject.canEscalate && (
                   <>
@@ -161,7 +161,7 @@ export const PreparedInjectPanel: React.FC<Props> = ({
                         disabled={!selectedIncident}
                         style={{ ...secondaryButtonStyle, color: selectedIncident ? 'var(--amber)' : 'var(--text-muted)', borderColor: selectedIncident ? 'var(--amber)' : 'var(--border)', opacity: selectedIncident ? 1 : 0.45 }}
                       >
-                        Saada eskalatsioon kõigile gruppidele
+                        Saada kõigile gruppidele
                       </button>
                     )}
                     <button
@@ -169,7 +169,7 @@ export const PreparedInjectPanel: React.FC<Props> = ({
                       disabled={!selectedIncident}
                       style={{ ...secondaryButtonStyle, color: selectedIncident ? 'var(--amber)' : 'var(--text-muted)', borderColor: selectedIncident ? 'var(--amber)' : 'var(--border)', opacity: selectedIncident ? 1 : 0.45 }}
                     >
-                      {canActivateAllGroups ? 'Lisa eskalatsioon sellele grupile' : 'Lisa eskalatsioon'}
+                      {canActivateAllGroups ? 'Lisa ainult sellele grupile' : 'Lisa eskalatsioon'}
                     </button>
                   </>
                 )}

@@ -1,4 +1,5 @@
 import { Building, EscortBus, Officer, Simulation } from '../models';
+import { APP_DATA_VERSION } from '../lib/appVersion';
 
 export const RESOURCE_POOL_ID = 'resource-pool';
 export const RESOURCE_POOL_NAME = 'Valves olevad ametnikud';
@@ -30,6 +31,7 @@ export function createDefaultSimulation(id: string, joinCode: string, name: stri
     studentCode: studentCode ?? joinCode,
     status: 'setup',
     setupMode: 'teacher_assigned',
+    dataVersion: APP_DATA_VERSION,
     createdAt,
     updatedAt: createdAt,
   };

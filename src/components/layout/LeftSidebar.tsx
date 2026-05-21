@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AppRole, Building, EscortBus, Incident, Officer, OfficerGender, OfficerRole, SetupMode, Simulation } from '../../models';
-import { OfficerCard } from '../officers/OfficerCard';
 import { OfficerDetailPanel } from '../officers/OfficerDetailPanel';
+import { officerGenderLabels, officerStatusLabels } from '../officers/OfficerMarker';
 
 type OfficerSetupPatch = Partial<
   Pick<
@@ -18,6 +18,8 @@ type OfficerSetupPatch = Partial<
     | 'status'
   >
 >;
+
+type OfficerFilter = 'all' | 'senior' | 'guard' | 'escort' | 'taser';
 
 interface Props {
   role: AppRole;
@@ -36,8 +38,19 @@ interface Props {
   onUpdateOfficer: (officerId: string, patch: OfficerSetupPatch) => void;
   onRemoveOfficer: (officerId: string) => void;
   onUpdateBuildingMinimum: (buildingId: string, minimum: number) => void;
+  onUpdateBuildingMinimums: (minimums: Record<string, number>) => void;
   onSetSetupMode: (mode: SetupMode) => void;
   onStartSimulation: () => void;
+}
+
+interface OfficerDraft {
+  name: string;
+  role: OfficerRole;
+  gender: OfficerGender;
+  escort: boolean;
+  taser: boolean;
+  homeBuildingId: string;
+  currentBuildingId: string;
 }
 
 export const LeftSidebar: React.FC<Props> = ({
@@ -57,133 +70,144 @@ export const LeftSidebar: React.FC<Props> = ({
   onUpdateOfficer,
   onRemoveOfficer,
   onUpdateBuildingMinimum,
+  onUpdateBuildingMinimums,
   onSetSetupMode,
   onStartSimulation,
 }) => {
   const selectedOfficer = officers.find((officer) => officer.id === selectedOfficerId);
-  const [setupOpen, setSetupOpen] = useState(role === 'facilitator');
-  const groupIds = [
-    ...buildings.map((building) => building.id),
-    ...buses.map((bus) => bus.id),
-    'other',
-  ];
-  const groupedOfficers = groupIds
-    .map((groupId) => {
-      const label =
-        buildings.find((building) => building.id === groupId)?.name ??
-        buses.find((bus) => bus.id === groupId)?.name ??
-        'Sündmusel / hõivatud';
-      const groupOfficers = officers.filter((officer) => officerGroupId(officer) === groupId);
-      return { groupId, label, officers: groupOfficers };
-    })
-    .filter((group) => group.officers.length > 0);
+
+  if (role !== 'facilitator') {
+    return (
+      <StudentOfficerPanel
+        selectedOfficer={selectedOfficer}
+        buildings={buildings}
+        incidents={incidents}
+        buses={buses}
+        onMoveToBuilding={(buildingId) => selectedOfficer && onMoveToBuilding(selectedOfficer.id, buildingId)}
+        onAssignToIncident={(incidentId) => selectedOfficer && onAssignToIncident(selectedOfficer.id, incidentId)}
+        onAssignToBus={(busId) => selectedOfficer && onAssignToBus(selectedOfficer.id, busId)}
+        onRelease={() => selectedOfficer && onRelease(selectedOfficer.id)}
+        onClose={() => onSelectOfficer(null)}
+      />
+    );
+  }
 
   return (
-    <div style={sidebarStyle}>
-      <SectionHeader title="Ametnikud" count={officers.length} />
-
-      <div style={listStyle}>
-        {groupedOfficers.map((group) => (
-          <OfficerGroup key={group.groupId} title={group.label}>
-            <RoleGroup title="Vanemvalvur" officers={group.officers.filter((officer) => officer.role === 'vanemvalvur')}>
-              {(officer) => (
-                <OfficerRow
-                  officer={officer}
-                  selected={selectedOfficerId === officer.id}
-                  onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
-                  buildingName={buildingLabel(officer, buildings)}
-                  incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
-                  busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
-                />
-              )}
-            </RoleGroup>
-            <RoleGroup title="Valvurid" officers={group.officers.filter((officer) => officer.role !== 'vanemvalvur')}>
-              {(officer) => (
-                <OfficerRow
-                  officer={officer}
-                  selected={selectedOfficerId === officer.id}
-                  onSelect={() => onSelectOfficer(selectedOfficerId === officer.id ? null : officer.id)}
-                  buildingName={buildingLabel(officer, buildings)}
-                  incidentTitle={officer.currentIncidentId ? incidents.find((incident) => incident.id === officer.currentIncidentId)?.title : undefined}
-                  busName={officer.currentBusId ? buses.find((bus) => bus.id === officer.currentBusId)?.name : undefined}
-                />
-              )}
-            </RoleGroup>
-          </OfficerGroup>
-        ))}
-      </div>
-
-      {selectedOfficer && (
-        <div style={detailStyle}>
-          <OfficerDetailPanel
-            officer={selectedOfficer}
-            buildings={buildings}
-            incidents={incidents}
-            buses={buses}
-            onMoveToBuilding={(buildingId) => onMoveToBuilding(selectedOfficer.id, buildingId)}
-            onAssignToIncident={(incidentId) => onAssignToIncident(selectedOfficer.id, incidentId)}
-            onAssignToBus={(busId) => onAssignToBus(selectedOfficer.id, busId)}
-            onRelease={() => onRelease(selectedOfficer.id)}
-            onClose={() => onSelectOfficer(null)}
-          />
-        </div>
-      )}
-
-      {role === 'facilitator' && (
-        <div style={setupShellStyle}>
-          <button style={setupToggleStyle} onClick={() => setSetupOpen((value) => !value)}>
-            Simulatsiooni ettevalmistus {setupOpen ? '-' : '+'}
-          </button>
-          {setupOpen && (
-            <TeacherPreparationPanel
-              simulation={simulation}
-              officers={officers}
-              buildings={buildings}
-              onSetSetupMode={onSetSetupMode}
-              onAddOfficer={onAddOfficer}
-              onUpdateOfficer={onUpdateOfficer}
-              onRemoveOfficer={onRemoveOfficer}
-              onUpdateBuildingMinimum={onUpdateBuildingMinimum}
-              onStartSimulation={onStartSimulation}
-            />
-          )}
-        </div>
-      )}
-    </div>
+    <TeacherOfficerManagementPanel
+      simulation={simulation}
+      officers={officers}
+      buildings={buildings}
+      selectedOfficer={selectedOfficer}
+      selectedOfficerId={selectedOfficerId}
+      onSelectOfficer={onSelectOfficer}
+      onAddOfficer={onAddOfficer}
+      onUpdateOfficer={onUpdateOfficer}
+      onRemoveOfficer={onRemoveOfficer}
+      onUpdateBuildingMinimum={onUpdateBuildingMinimum}
+      onUpdateBuildingMinimums={onUpdateBuildingMinimums}
+      onSetSetupMode={onSetSetupMode}
+      onStartSimulation={onStartSimulation}
+    />
   );
 };
 
-const TeacherPreparationPanel: React.FC<{
+const StudentOfficerPanel: React.FC<{
+  selectedOfficer?: Officer;
+  buildings: Building[];
+  incidents: Incident[];
+  buses: EscortBus[];
+  onMoveToBuilding: (buildingId: string) => void;
+  onAssignToIncident: (incidentId: string) => void;
+  onAssignToBus: (busId: string) => void;
+  onRelease: () => void;
+  onClose: () => void;
+}> = ({ selectedOfficer, buildings, incidents, buses, onMoveToBuilding, onAssignToIncident, onAssignToBus, onRelease, onClose }) => (
+  <aside style={sidebarStyle}>
+    <SectionHeader title="Ametniku info" />
+    <div style={studentPanelBodyStyle}>
+      {selectedOfficer ? (
+        <OfficerDetailPanel
+          officer={selectedOfficer}
+          buildings={buildings}
+          incidents={incidents}
+          buses={buses}
+          onMoveToBuilding={onMoveToBuilding}
+          onAssignToIncident={onAssignToIncident}
+          onAssignToBus={onAssignToBus}
+          onRelease={onRelease}
+          onClose={onClose}
+        />
+      ) : (
+        <div style={studentHintStyle}>
+          Vali kaardilt ametnik, et näha tema infot ja suunamise võimalusi. Operatiivne pilt on kaardil.
+        </div>
+      )}
+    </div>
+  </aside>
+);
+
+const TeacherOfficerManagementPanel: React.FC<{
   simulation: Simulation;
   officers: Officer[];
   buildings: Building[];
-  onSetSetupMode: (mode: SetupMode) => void;
+  selectedOfficer?: Officer;
+  selectedOfficerId: string | null;
+  onSelectOfficer: (id: string | null) => void;
   onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string, role?: OfficerRole) => void;
   onUpdateOfficer: (officerId: string, patch: OfficerSetupPatch) => void;
   onRemoveOfficer: (officerId: string) => void;
   onUpdateBuildingMinimum: (buildingId: string, minimum: number) => void;
+  onUpdateBuildingMinimums: (minimums: Record<string, number>) => void;
+  onSetSetupMode: (mode: SetupMode) => void;
   onStartSimulation: () => void;
 }> = ({
   simulation,
   officers,
   buildings,
-  onSetSetupMode,
+  selectedOfficer,
+  selectedOfficerId,
+  onSelectOfficer,
   onAddOfficer,
   onUpdateOfficer,
   onRemoveOfficer,
   onUpdateBuildingMinimum,
+  onUpdateBuildingMinimums,
+  onSetSetupMode,
   onStartSimulation,
 }) => {
   const regularBuildings = buildings.filter((building) => !building.isResourcePool);
   const resourcePool = buildings.find((building) => building.isResourcePool);
   const placementOptions = resourcePool ? [...regularBuildings, resourcePool] : regularBuildings;
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<OfficerGender>('male');
-  const [officerRole, setOfficerRole] = useState<OfficerRole>('valvur');
-  const [escort, setEscort] = useState(false);
-  const [taser, setTaser] = useState(false);
-  const [buildingId, setBuildingId] = useState(regularBuildings[0]?.id ?? '');
+  const setupEditable = simulation.status === 'setup';
+  const classroomMode = Boolean(simulation.classroomExerciseId || simulation.classroomGroupName);
+
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<OfficerFilter>('all');
+  const [addName, setAddName] = useState('');
+  const [addGender, setAddGender] = useState<OfficerGender>('male');
+  const [addRole, setAddRole] = useState<OfficerRole>('valvur');
+  const [addEscort, setAddEscort] = useState(false);
+  const [addTaser, setAddTaser] = useState(false);
+  const [addBuildingId, setAddBuildingId] = useState(placementOptions[0]?.id ?? '');
+  const [draft, setDraft] = useState<OfficerDraft | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [minimumDrafts, setMinimumDrafts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!selectedOfficer) {
+      setDraft(null);
+      return;
+    }
+    setDraft({
+      name: selectedOfficer.name,
+      role: selectedOfficer.role,
+      gender: selectedOfficer.gender,
+      escort: selectedOfficer.hasEscortPermission,
+      taser: selectedOfficer.hasTaserPermission,
+      homeBuildingId: selectedOfficer.homeBuildingId ?? resourcePool?.id ?? '',
+      currentBuildingId: selectedOfficer.currentBuildingId ?? resourcePool?.id ?? '',
+    });
+  }, [resourcePool?.id, selectedOfficer]);
 
   useEffect(() => {
     const drafts = regularBuildings.reduce<Record<string, number>>((next, building) => {
@@ -193,368 +217,326 @@ const TeacherPreparationPanel: React.FC<{
     setMinimumDrafts(drafts);
   }, [buildings]);
 
-  const canEditMode = simulation.status === 'setup';
-  const poolOfficerCount = resourcePool ? countOfficersInBuilding(resourcePool.id, officers) : 0;
-  const unitsBelowMinimum = regularBuildings.filter((building) => countOfficersInBuilding(building.id, officers) < building.minimumStaff);
+  const filteredOfficers = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return officers.filter((officer) => {
+      if (filter === 'senior' && officer.role !== 'vanemvalvur') return false;
+      if (filter === 'guard' && officer.role !== 'valvur') return false;
+      if (filter === 'escort' && !officer.hasEscortPermission) return false;
+      if (filter === 'taser' && !officer.hasTaserPermission) return false;
+      if (!normalizedQuery) return true;
+      const homeUnit = unitName(officer.homeBuildingId ?? officer.currentBuildingId, buildings);
+      const haystack = [
+        officer.name,
+        officer.role === 'vanemvalvur' ? 'vanemvalvur' : 'valvur',
+        officerGenderLabels[officer.gender],
+        homeUnit,
+        officer.hasEscortPermission ? 'saateõigus saade' : '',
+        officer.hasTaserPermission ? 'ešr elektrišokirelv' : '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [buildings, filter, officers, query]);
 
-  const updateOfficerHome = (officer: Officer, nextBuildingId: string) => {
-    const building = buildings.find((item) => item.id === nextBuildingId);
-    const homeBuildingId = building?.isResourcePool ? null : nextBuildingId || null;
-    const patch: OfficerSetupPatch = { homeBuildingId };
-    if (simulation.setupMode === 'teacher_assigned' && !officer.currentIncidentId && !officer.currentBusId && nextBuildingId) {
-      patch.currentBuildingId = nextBuildingId;
-      patch.status = building?.isResourcePool ? 'available' : 'in_building';
-      patch.currentIncidentId = null;
-      patch.currentBusId = null;
+  const addOfficer = () => {
+    if (!setupEditable) {
+      window.alert('Aktiivse simulatsiooni ajal ametnike põhiseadistuse muutmine võib mõjutada harjutust.');
+      return;
     }
-    onUpdateOfficer(officer.id, patch);
+    onAddOfficer(addName, addGender, addEscort, addTaser, addBuildingId, addRole);
+    setAddName('');
   };
 
-  const updateOfficerStartLocation = (officer: Officer, nextBuildingId: string) => {
-    const building = buildings.find((item) => item.id === nextBuildingId);
-    onUpdateOfficer(officer.id, {
-      currentBuildingId: nextBuildingId,
+  const saveSelectedOfficer = () => {
+    if (!selectedOfficer || !draft) return;
+    if (!setupEditable) {
+      window.alert('Aktiivse simulatsiooni ajal ametnike põhiseadistuse muutmine võib mõjutada harjutust.');
+      return;
+    }
+    const homeBuilding = buildings.find((building) => building.id === draft.homeBuildingId);
+    const currentBuilding = buildings.find((building) => building.id === draft.currentBuildingId);
+    onUpdateOfficer(selectedOfficer.id, {
+      name: draft.name,
+      role: draft.role,
+      gender: draft.gender,
+      hasEscortPermission: draft.escort,
+      hasTaserPermission: draft.taser,
+      homeBuildingId: homeBuilding?.isResourcePool ? null : draft.homeBuildingId || null,
+      currentBuildingId: draft.currentBuildingId || null,
       currentIncidentId: null,
       currentBusId: null,
-      status: building?.isResourcePool ? 'available' : 'in_building',
-      homeBuildingId: building && !building.isResourcePool ? officer.homeBuildingId ?? nextBuildingId : officer.homeBuildingId,
+      status: currentBuilding?.isResourcePool ? 'available' : 'in_building',
     });
+  };
+
+  const removeSelectedOfficer = () => {
+    if (!selectedOfficer) return;
+    if (!setupEditable) {
+      window.alert('Aktiivse simulatsiooni ajal ametnike põhiseadistuse muutmine võib mõjutada harjutust.');
+      return;
+    }
+    if (window.confirm(`Eemalda ametnik ${selectedOfficer.name}?`)) {
+      onRemoveOfficer(selectedOfficer.id);
+      onSelectOfficer(null);
+    }
   };
 
   const saveMinimums = () => {
-    regularBuildings.forEach((building) => {
+    const nextMinimums = regularBuildings.reduce<Record<string, number>>((next, building) => {
       const value = minimumDrafts[building.id];
-      onUpdateBuildingMinimum(building.id, Number.isFinite(value) ? value : building.minimumStaff);
-    });
-  };
-
-  const removeOfficer = (officer: Officer) => {
-    if (simulation.status !== 'setup') {
-      window.alert('Aktiivse simulatsiooni ajal ei ole ametniku eemaldamine soovitatav.');
-      return;
-    }
-    if (window.confirm(`Eemalda ametnik ${officer.name}?`)) {
-      onRemoveOfficer(officer.id);
-    }
+      next[building.id] = Number.isFinite(value) ? value : building.minimumStaff;
+      return next;
+    }, {});
+    onUpdateBuildingMinimums(nextMinimums);
   };
 
   return (
-    <div style={setupContentStyle}>
-      <SetupSection title="Algpaigutus">
-        <div style={{ display: 'grid', gap: 6 }}>
-          <SmallButton disabled={!canEditMode} active={simulation.setupMode === 'teacher_assigned'} onClick={() => onSetSetupMode('teacher_assigned')}>
-            Õppejõud määrab ametnikud üksustesse
-          </SmallButton>
-          <SmallButton disabled={!canEditMode} active={simulation.setupMode === 'student_places_officers'} onClick={() => onSetSetupMode('student_places_officers')}>
-            Korrapidaja alustab ametnike paigutamisega
-          </SmallButton>
-        </div>
-      </SetupSection>
+    <aside style={sidebarStyle}>
+      <SectionHeader title="Ametnike haldus" count={officers.length} />
+      <div style={managementBodyStyle}>
+        {classroomMode && (
+          <InfoNotice>
+            <strong>Ühine algseis kõigile gruppidele</strong>
+            <span>Enne simulatsiooni alustamist tehtud muudatused rakenduvad kõigile gruppidele. Pärast alustamist lahendavad grupid olukorda eraldi.</span>
+          </InfoNotice>
+        )}
+        {!setupEditable && (
+          <InfoNotice tone="warning">
+            Aktiivse simulatsiooni ajal ametnike põhiseadistuse muutmine võib mõjutada harjutust.
+          </InfoNotice>
+        )}
 
-      <SetupSection title="Üksuste miinimumkoosseis">
-        <div style={setupTableHeaderStyle}>
-          <span>Üksus / hoone</span>
-          <span>Miinimumkoosseis</span>
-        </div>
-        <div style={minimumListStyle}>
-          {regularBuildings.map((building) => (
-            <label key={building.id} style={minRowStyle}>
-              <span>{building.name}</span>
-              <input
-                type="number"
-                min={0}
-                value={minimumDrafts[building.id] ?? building.minimumStaff}
-                onChange={(event) =>
-                  setMinimumDrafts((current) => ({
-                    ...current,
-                    [building.id]: Math.max(0, Number(event.target.value)),
-                  }))
-                }
-                style={{ ...smallInputStyle, width: 64, padding: '3px 5px' }}
-              />
-            </label>
-          ))}
-        </div>
-        <button style={wideSmallButtonStyle} onClick={saveMinimums}>
-          Salvesta miinimumid
-        </button>
-      </SetupSection>
+        <PanelSection title="Ametnike otsing">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Otsi ametnikku..."
+            style={inputStyle}
+          />
+          <div style={filterGridStyle}>
+            <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>Kõik</FilterButton>
+            <FilterButton active={filter === 'senior'} onClick={() => setFilter('senior')}>Vanemvalvurid</FilterButton>
+            <FilterButton active={filter === 'guard'} onClick={() => setFilter('guard')}>Valvurid</FilterButton>
+            <FilterButton active={filter === 'escort'} onClick={() => setFilter('escort')}>Saateõigusega</FilterButton>
+            <FilterButton active={filter === 'taser'} onClick={() => setFilter('taser')}>EŠR õigusega</FilterButton>
+          </div>
+        </PanelSection>
 
-      <SetupSection title="Ametnikud">
-        <div style={officerSetupListStyle}>
-          {officers.map((officer) => (
-            <div key={officer.id} style={officerSetupRowStyle}>
-              <label style={fieldStyle}>
-                <span>Ametnik</span>
-                <input
-                  disabled={!canEditMode}
-                  defaultValue={officer.name}
-                  onBlur={(event) => {
-                    if (event.target.value.trim() !== officer.name) onUpdateOfficer(officer.id, { name: event.target.value });
-                  }}
-                  style={smallInputStyle}
+        <PanelSection title="Lisa ametnik">
+          <div style={addGridStyle}>
+            <input
+              disabled={!setupEditable}
+              value={addName}
+              onChange={(event) => setAddName(event.target.value)}
+              placeholder="Ametniku kood"
+              style={inputStyle}
+            />
+            <select disabled={!setupEditable} value={addRole} onChange={(event) => setAddRole(event.target.value as OfficerRole)} style={inputStyle}>
+              <option value="valvur">Valvur</option>
+              <option value="vanemvalvur">Vanemvalvur</option>
+            </select>
+            <select disabled={!setupEditable} value={addGender} onChange={(event) => setAddGender(event.target.value as OfficerGender)} style={inputStyle}>
+              <option value="male">Mees</option>
+              <option value="female">Naine</option>
+            </select>
+            <select disabled={!setupEditable} value={addBuildingId} onChange={(event) => setAddBuildingId(event.target.value)} style={inputStyle}>
+              {placementOptions.map((building) => (
+                <option key={building.id} value={building.id}>{building.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={checkRowStyle}>
+            <label style={checkStyle}><input type="checkbox" disabled={!setupEditable} checked={addEscort} onChange={(event) => setAddEscort(event.target.checked)} /> Saateõigus</label>
+            <label style={checkStyle}><input type="checkbox" disabled={!setupEditable} checked={addTaser} onChange={(event) => setAddTaser(event.target.checked)} /> Elektrišokirelva õigus</label>
+          </div>
+          <button disabled={!setupEditable} onClick={addOfficer} style={primaryButtonStyle}>
+            Lisa ametnik
+          </button>
+        </PanelSection>
+
+        <PanelSection title="Ametnike nimekiri" meta={`${filteredOfficers.length}/${officers.length}`}>
+          <div style={officerListStyle}>
+            {filteredOfficers.length === 0 ? (
+              <div style={emptyTextStyle}>Sobivaid ametnikke ei leitud.</div>
+            ) : (
+              filteredOfficers.map((officer) => (
+                <OfficerManagementRow
+                  key={officer.id}
+                  officer={officer}
+                  selected={officer.id === selectedOfficerId}
+                  homeUnit={unitName(officer.homeBuildingId ?? officer.currentBuildingId, buildings)}
+                  onClick={() => onSelectOfficer(officer.id === selectedOfficerId ? null : officer.id)}
                 />
-              </label>
-              <label style={fieldStyle}>
-                <span>Roll</span>
-                <select disabled={!canEditMode} value={officer.role} onChange={(event) => onUpdateOfficer(officer.id, { role: event.target.value as OfficerRole })} style={smallInputStyle}>
-                  <option value="valvur">Valvur</option>
-                  <option value="vanemvalvur">Vanemvalvur</option>
-                </select>
-              </label>
-              <label style={fieldStyle}>
-                <span>Sugu</span>
-                <select disabled={!canEditMode} value={officer.gender} onChange={(event) => onUpdateOfficer(officer.id, { gender: event.target.value as OfficerGender })} style={smallInputStyle}>
-                  <option value="male">Mees</option>
-                  <option value="female">Naine</option>
-                </select>
-              </label>
-              <label style={fieldStyle}>
-                <span>Saateõigus</span>
-                <select disabled={!canEditMode} value={officer.hasEscortPermission ? 'yes' : 'no'} onChange={(event) => onUpdateOfficer(officer.id, { hasEscortPermission: event.target.value === 'yes' })} style={smallInputStyle}>
-                  <option value="yes">Jah</option>
-                  <option value="no">Ei</option>
-                </select>
-              </label>
-              <label style={fieldStyle}>
-                <span>Elektrišokirelva õigus</span>
-                <select disabled={!canEditMode} value={officer.hasTaserPermission ? 'yes' : 'no'} onChange={(event) => onUpdateOfficer(officer.id, { hasTaserPermission: event.target.value === 'yes' })} style={smallInputStyle}>
-                  <option value="yes">Jah</option>
-                  <option value="no">Ei</option>
-                </select>
-              </label>
-              <label style={fieldStyle}>
-                <span>Määratud üksus</span>
-                <select disabled={!canEditMode} value={officer.homeBuildingId ?? resourcePool?.id ?? ''} onChange={(event) => updateOfficerHome(officer, event.target.value)} style={smallInputStyle}>
+              ))
+            )}
+          </div>
+        </PanelSection>
+
+        <PanelSection title="Valitud ametniku andmed">
+          {selectedOfficer && draft ? (
+            <div style={editPanelStyle}>
+              <Field label="Ametnik / kood">
+                <input disabled={!setupEditable} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} style={inputStyle} />
+              </Field>
+              <div style={twoColumnStyle}>
+                <Field label="Roll">
+                  <select disabled={!setupEditable} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as OfficerRole })} style={inputStyle}>
+                    <option value="valvur">Valvur</option>
+                    <option value="vanemvalvur">Vanemvalvur</option>
+                  </select>
+                </Field>
+                <Field label="Sugu">
+                  <select disabled={!setupEditable} value={draft.gender} onChange={(event) => setDraft({ ...draft, gender: event.target.value as OfficerGender })} style={inputStyle}>
+                    <option value="male">Mees</option>
+                    <option value="female">Naine</option>
+                  </select>
+                </Field>
+              </div>
+              <div style={checkColumnStyle}>
+                <label style={checkStyle}><input type="checkbox" disabled={!setupEditable} checked={draft.escort} onChange={(event) => setDraft({ ...draft, escort: event.target.checked })} /> Saateõigus</label>
+                <label style={checkStyle}><input type="checkbox" disabled={!setupEditable} checked={draft.taser} onChange={(event) => setDraft({ ...draft, taser: event.target.checked })} /> Elektrišokirelva õigus</label>
+              </div>
+              <Field label="Määratud üksus">
+                <select disabled={!setupEditable} value={draft.homeBuildingId} onChange={(event) => setDraft({ ...draft, homeBuildingId: event.target.value })} style={inputStyle}>
                   {resourcePool && <option value={resourcePool.id}>Valves olevad ametnikud</option>}
                   {regularBuildings.map((building) => (
                     <option key={building.id} value={building.id}>{building.name}</option>
                   ))}
                 </select>
-              </label>
-              <label style={fieldStyle}>
-                <span>Algne asukoht</span>
+              </Field>
+              <Field label="Algne asukoht">
                 <select
-                  value={officer.currentBuildingId ?? resourcePool?.id ?? ''}
-                  disabled={!canEditMode || simulation.setupMode === 'student_places_officers'}
-                  onChange={(event) => updateOfficerStartLocation(officer, event.target.value)}
-                  style={smallInputStyle}
+                  disabled={!setupEditable || simulation.setupMode === 'student_places_officers'}
+                  value={draft.currentBuildingId}
+                  onChange={(event) => setDraft({ ...draft, currentBuildingId: event.target.value })}
+                  style={inputStyle}
                 >
                   {placementOptions.map((building) => (
                     <option key={building.id} value={building.id}>{building.name}</option>
                   ))}
                 </select>
-              </label>
-              <button style={dangerSmallButtonStyle} onClick={() => removeOfficer(officer)}>
-                Eemalda
+              </Field>
+              <div style={buttonRowStyle}>
+                <button disabled={!setupEditable} onClick={saveSelectedOfficer} style={primaryButtonStyle}>
+                  Salvesta muudatused
+                </button>
+                <button onClick={() => onSelectOfficer(null)} style={secondaryButtonStyle}>
+                  Tühista
+                </button>
+              </div>
+              <button disabled={!setupEditable} onClick={removeSelectedOfficer} style={dangerButtonStyle}>
+                Eemalda ametnik
               </button>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div style={emptyTextStyle}>Vali nimekirjast ametnik.</div>
+          )}
+        </PanelSection>
 
-        <div style={addOfficerBoxStyle}>
-          <div style={miniLabelStyle}>Lisa ametnik</div>
-          <input disabled={!canEditMode} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ametniku kood" style={smallInputStyle} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 5 }}>
-            <select disabled={!canEditMode} value={gender} onChange={(event) => setGender(event.target.value as OfficerGender)} style={smallInputStyle}>
-              <option value="male">Mees</option>
-              <option value="female">Naine</option>
-            </select>
-            <select disabled={!canEditMode} value={officerRole} onChange={(event) => setOfficerRole(event.target.value as OfficerRole)} style={smallInputStyle}>
-              <option value="valvur">Valvur</option>
-              <option value="vanemvalvur">Vanemvalvur</option>
-            </select>
-          </div>
-          <div style={{ marginTop: 5 }}>
-            <select disabled={!canEditMode} value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={smallInputStyle}>
+        <button onClick={() => setSetupOpen((value) => !value)} style={setupToggleStyle}>
+          Algseadistus ja miinimumid {setupOpen ? '-' : '+'}
+        </button>
+        {setupOpen && (
+          <PanelSection title="Algseadistus">
+            <div style={twoColumnStyle}>
+              <SmallButton disabled={!setupEditable} active={simulation.setupMode === 'teacher_assigned'} onClick={() => onSetSetupMode('teacher_assigned')}>
+                Režiim A
+              </SmallButton>
+              <SmallButton disabled={!setupEditable} active={simulation.setupMode === 'student_places_officers'} onClick={() => onSetSetupMode('student_places_officers')}>
+                Režiim B
+              </SmallButton>
+            </div>
+            <div style={minimumListStyle}>
               {regularBuildings.map((building) => (
-                <option key={building.id} value={building.id}>{building.name}</option>
+                <label key={building.id} style={minRowStyle}>
+                  <span>{building.name}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={minimumDrafts[building.id] ?? building.minimumStaff}
+                    onChange={(event) =>
+                      setMinimumDrafts((current) => ({
+                        ...current,
+                        [building.id]: Math.max(0, Number(event.target.value)),
+                      }))
+                    }
+                    style={{ ...inputStyle, padding: '4px 6px' }}
+                  />
+                </label>
               ))}
-            </select>
-          </div>
-          <label style={checkStyle}><input type="checkbox" disabled={!canEditMode} checked={escort} onChange={(event) => setEscort(event.target.checked)} /> Saateõigus</label>
-          <label style={checkStyle}><input type="checkbox" disabled={!canEditMode} checked={taser} onChange={(event) => setTaser(event.target.checked)} /> Elektrišokirelva õigus</label>
-          <button
-            style={wideSmallButtonStyle}
-            disabled={!canEditMode}
-            onClick={() => {
-              onAddOfficer(name, gender, escort, taser, buildingId, officerRole);
-              setName('');
-            }}
-          >
-            Lisa ametnik
-          </button>
-        </div>
-      </SetupSection>
-
-      <SetupSection title="Mängu alustamine">
-        <div style={summaryGridStyle}>
-          <span>Üksuseid</span><strong>{regularBuildings.length}</strong>
-          <span>Ametnikke</span><strong>{officers.length}</strong>
-          <span>Valves olevad ametnikud</span><strong>{poolOfficerCount}</strong>
-          <span>Alla miinimumi</span><strong>{unitsBelowMinimum.length}</strong>
-        </div>
-        {unitsBelowMinimum.length > 0 && <div style={setupWarningStyle}>Mõned üksused on alla miinimumkoosseisu.</div>}
-        {simulation.status === 'setup' ? (
-          <button style={startButtonStyle} onClick={onStartSimulation}>
-            Alusta simulatsiooni
-          </button>
-        ) : (
-          <div style={activeNoticeStyle}>Simulatsioon on aktiivne.</div>
+            </div>
+            <button disabled={!setupEditable} onClick={saveMinimums} style={secondaryButtonStyle}>
+              Salvesta miinimumid
+            </button>
+            {simulation.status === 'setup' ? (
+              <button onClick={onStartSimulation} style={startButtonStyle}>Alusta simulatsiooni</button>
+            ) : (
+              <div style={activeNoticeStyle}>Simulatsioon on aktiivne.</div>
+            )}
+            <div style={smallMutedStyle}>Õpilaste töö algab pärast simulatsiooni alustamist.</div>
+          </PanelSection>
         )}
-      </SetupSection>
-    </div>
+      </div>
+    </aside>
   );
 };
 
-const TeacherSetup: React.FC<{
-  simulation: Simulation;
-  buildings: Building[];
-  onSetSetupMode: (mode: SetupMode) => void;
-  onAddOfficer: (name: string, gender: OfficerGender, escort: boolean, taser: boolean, buildingId?: string, role?: OfficerRole) => void;
-  onUpdateBuildingMinimum: (buildingId: string, minimum: number) => void;
-}> = ({ simulation, buildings, onSetSetupMode, onAddOfficer, onUpdateBuildingMinimum }) => {
-  const firstBuilding = buildings.find((building) => !building.isResourcePool)?.id;
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<OfficerGender>('male');
-  const [officerRole, setOfficerRole] = useState<OfficerRole>('valvur');
-  const [escort, setEscort] = useState(false);
-  const [taser, setTaser] = useState(false);
-  const [buildingId, setBuildingId] = useState(firstBuilding ?? '');
-
-  const canEditMode = simulation.status === 'setup';
-
-  return (
-    <div style={{ padding: 8 }}>
-      <div style={miniLabelStyle}>Seadistuse režiim</div>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
-        <SmallButton disabled={!canEditMode} active={simulation.setupMode === 'teacher_assigned'} onClick={() => onSetSetupMode('teacher_assigned')}>
-          A
-        </SmallButton>
-        <SmallButton disabled={!canEditMode} active={simulation.setupMode === 'student_places_officers'} onClick={() => onSetSetupMode('student_places_officers')}>
-          B
-        </SmallButton>
-      </div>
-
-      <div style={miniLabelStyle}>Lisa ametnik</div>
-      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ametniku kood" style={smallInputStyle} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 5 }}>
-        <select value={gender} onChange={(event) => setGender(event.target.value as OfficerGender)} style={smallInputStyle}>
-          <option value="male">Mees</option>
-          <option value="female">Naine</option>
-        </select>
-        <select value={officerRole} onChange={(event) => setOfficerRole(event.target.value as OfficerRole)} style={smallInputStyle}>
-          <option value="valvur">Valvur</option>
-          <option value="vanemvalvur">Vanemvalvur</option>
-        </select>
-      </div>
-      <div style={{ marginTop: 5 }}>
-        <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={smallInputStyle}>
-          {buildings.filter((building) => !building.isResourcePool).map((building) => (
-            <option key={building.id} value={building.id}>{building.name}</option>
-          ))}
-        </select>
-      </div>
-      <label style={checkStyle}><input type="checkbox" checked={escort} onChange={(event) => setEscort(event.target.checked)} /> Saateõigus</label>
-      <label style={checkStyle}><input type="checkbox" checked={taser} onChange={(event) => setTaser(event.target.checked)} /> EŠR õigus</label>
-      <button
-        style={wideSmallButtonStyle}
-        onClick={() => {
-          onAddOfficer(name, gender, escort, taser, buildingId, officerRole);
-          setName('');
-        }}
-      >
-        Lisa ametnik
-      </button>
-
-      <div style={{ ...miniLabelStyle, marginTop: 12 }}>Miinimumkoosseis</div>
-      <div style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {buildings.filter((building) => !building.isResourcePool).map((building) => (
-          <label key={building.id} style={minRowStyle}>
-            <span>{building.name}</span>
-            <input
-              type="number"
-              min={0}
-              value={building.minimumStaff}
-              onChange={(event) => onUpdateBuildingMinimum(building.id, Number(event.target.value))}
-              style={{ ...smallInputStyle, width: 48, padding: '3px 5px' }}
-            />
-          </label>
-        ))}
-      </div>
+const OfficerManagementRow: React.FC<{
+  officer: Officer;
+  selected: boolean;
+  homeUnit?: string;
+  onClick: () => void;
+}> = ({ officer, selected, homeUnit, onClick }) => (
+  <button onClick={onClick} style={officerRowStyle(selected)}>
+    <div style={officerTopRowStyle}>
+      <strong>{officer.name}</strong>
+      <span style={statusBadgeStyle(officer.status)}>{officerStatusLabels[officer.status]}</span>
     </div>
-  );
-};
+    <div style={badgeRowStyle}>
+      <Badge tone={officer.role === 'vanemvalvur' ? 'dark' : 'plain'}>{officer.role === 'vanemvalvur' ? 'VV' : 'V'}</Badge>
+      <Badge tone={officer.gender === 'female' ? 'rose' : 'blue'}>{officer.gender === 'female' ? 'N' : 'M'}</Badge>
+      {officer.hasEscortPermission && <Badge tone="green">Saade</Badge>}
+      {officer.hasTaserPermission && <Badge tone="amber">EŠR</Badge>}
+    </div>
+    <div style={homeUnitStyle}>{homeUnit ?? 'Määramata üksus'}</div>
+  </button>
+);
 
-function officerGroupId(officer: Officer) {
-  return officer.homeBuildingId ?? officer.currentBuildingId ?? officer.currentBusId ?? 'other';
-}
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <label style={fieldStyle}>
+    <span>{label}</span>
+    {children}
+  </label>
+);
 
-function buildingLabel(officer: Officer, buildings: Building[]) {
-  const buildingId = officer.currentBuildingId ?? officer.homeBuildingId;
-  return buildingId ? buildings.find((building) => building.id === buildingId)?.name : undefined;
-}
-
-function countOfficersInBuilding(buildingId: string, officers: Officer[]) {
-  return officers.filter(
-    (officer) =>
-      officer.currentBuildingId === buildingId &&
-      !officer.currentIncidentId &&
-      !officer.currentBusId &&
-      officer.status !== 'unavailable'
-  ).length;
-}
-
-function dragOfficer(event: React.DragEvent, officerId: string) {
-  event.dataTransfer.setData('text/plain', officerId);
-  event.dataTransfer.effectAllowed = 'move';
-}
-
-const OfficerGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section style={officerGroupStyle}>
-    <div style={groupTitleStyle}>{title}</div>
+const PanelSection: React.FC<{ title: string; meta?: string; children: React.ReactNode }> = ({ title, meta, children }) => (
+  <section style={panelSectionStyle}>
+    <div style={sectionTitleRowStyle}>
+      <span>{title}</span>
+      {meta && <strong>{meta}</strong>}
+    </div>
     {children}
   </section>
 );
 
-const RoleGroup: React.FC<{ title: string; officers: Officer[]; children: (officer: Officer) => React.ReactNode }> = ({ title, officers, children }) => {
-  if (officers.length === 0) return null;
-  return (
-    <div style={roleGroupStyle}>
-      <div style={roleTitleStyle}>{title}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {officers.map((officer) => (
-          <React.Fragment key={officer.id}>{children(officer)}</React.Fragment>
-        ))}
-      </div>
-    </div>
-  );
-};
+const InfoNotice: React.FC<{ children: React.ReactNode; tone?: 'info' | 'warning' }> = ({ children, tone = 'info' }) => (
+  <div style={noticeStyle(tone)}>{children}</div>
+);
 
-const OfficerRow: React.FC<{
-  officer: Officer;
-  selected: boolean;
-  onSelect: () => void;
-  buildingName?: string;
-  incidentTitle?: string;
-  busName?: string;
-}> = ({ officer, selected, onSelect, buildingName, incidentTitle, busName }) => (
-  <div draggable onDragStart={(event) => dragOfficer(event, officer.id)}>
-    <OfficerCard
-      officer={officer}
-      selected={selected}
-      onClick={onSelect}
-      buildingName={buildingName}
-      incidentTitle={incidentTitle}
-      busName={busName}
-    />
-  </div>
+const FilterButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button onClick={onClick} style={filterButtonStyle(active)}>{children}</button>
 );
 
 const SmallButton: React.FC<{ active: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, disabled, onClick, children }) => (
   <button disabled={disabled} onClick={onClick} style={{ ...smallButtonStyle, borderColor: active ? 'var(--cyan)' : 'var(--border)', color: active ? 'var(--cyan)' : 'var(--text-secondary)', opacity: disabled ? 0.45 : 1 }}>
     {children}
   </button>
+);
+
+const Badge: React.FC<{ tone: 'dark' | 'plain' | 'rose' | 'blue' | 'green' | 'amber'; children: React.ReactNode }> = ({ tone, children }) => (
+  <span style={badgeStyle(tone)}>{children}</span>
 );
 
 const SectionHeader: React.FC<{ title: string; count?: number }> = ({ title, count }) => (
@@ -564,12 +546,10 @@ const SectionHeader: React.FC<{ title: string; count?: number }> = ({ title, cou
   </div>
 );
 
-const SetupSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section style={setupSectionStyle}>
-    <div style={setupSectionTitleStyle}>{title}</div>
-    {children}
-  </section>
-);
+function unitName(buildingId: string | null | undefined, buildings: Building[]) {
+  if (!buildingId) return undefined;
+  return buildings.find((building) => building.id === buildingId)?.name;
+}
 
 const sidebarStyle: React.CSSProperties = {
   width: '100%',
@@ -593,13 +573,14 @@ const sectionHeaderStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 10,
   color: 'var(--text-primary)',
-  letterSpacing: 2,
+  letterSpacing: 1.5,
   textTransform: 'uppercase',
   fontWeight: 800,
 };
 
-const listStyle: React.CSSProperties = {
+const managementBodyStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: 'auto',
   padding: 10,
   display: 'flex',
@@ -607,254 +588,319 @@ const listStyle: React.CSSProperties = {
   gap: 10,
 };
 
-const officerGroupStyle: React.CSSProperties = {
+const studentPanelBodyStyle: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+  padding: 10,
+};
+
+const studentHintStyle: React.CSSProperties = {
+  padding: 12,
+  background: '#ffffff',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  lineHeight: 1.4,
+};
+
+const panelSectionStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   background: '#ffffff',
-  padding: 8,
+  padding: 9,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
   boxShadow: 'var(--shadow-card)',
 };
 
-const groupTitleStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  color: 'var(--text-primary)',
-  letterSpacing: 1,
-  textTransform: 'uppercase',
-  marginBottom: 7,
-  fontWeight: 800,
-};
-
-const roleGroupStyle: React.CSSProperties = {
-  marginTop: 5,
-};
-
-const roleTitleStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 8.5,
-  color: 'var(--text-secondary)',
-  letterSpacing: 1,
-  textTransform: 'uppercase',
-  marginBottom: 4,
-};
-
-const detailStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border-bright)',
-  padding: 10,
-  overflowY: 'auto',
-  maxHeight: '45%',
-};
-
-const setupShellStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border-bright)',
-  background: '#f8fafc',
-  maxHeight: '58%',
-  overflowY: 'auto',
-};
-
-const setupToggleStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 10px',
-  background: '#ffffff',
-  border: 'none',
-  borderBottom: '1px solid var(--border)',
-  color: 'var(--text-primary)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  letterSpacing: 1,
-  textTransform: 'uppercase',
-  textAlign: 'left',
-  fontWeight: 800,
-};
-
-const setupContentStyle: React.CSSProperties = {
-  padding: 8,
-  display: 'grid',
-  gap: 8,
-};
-
-const setupSectionStyle: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  background: '#ffffff',
-  padding: 8,
-};
-
-const setupSectionTitleStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  color: 'var(--text-primary)',
-  letterSpacing: 1.2,
-  textTransform: 'uppercase',
-  marginBottom: 7,
-  fontWeight: 800,
-};
-
-const setupTableHeaderStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 72px',
-  gap: 8,
-  fontFamily: 'var(--font-mono)',
-  fontSize: 8.5,
-  color: 'var(--text-secondary)',
-  letterSpacing: 0.8,
-  textTransform: 'uppercase',
-  marginBottom: 5,
-};
-
-const minimumListStyle: React.CSSProperties = {
-  maxHeight: 145,
-  overflowY: 'auto',
+const sectionTitleRowStyle: React.CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-};
-
-const officerSetupListStyle: React.CSSProperties = {
-  maxHeight: 245,
-  overflowY: 'auto',
-  display: 'grid',
-  gap: 7,
-  paddingRight: 2,
-};
-
-const officerSetupRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 5,
-  padding: 7,
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  background: 'var(--bg-card)',
-};
-
-const fieldStyle: React.CSSProperties = {
-  display: 'grid',
-  gap: 3,
-  color: 'var(--text-secondary)',
-  fontSize: 10,
-  fontWeight: 600,
-};
-
-const addOfficerBoxStyle: React.CSSProperties = {
-  marginTop: 8,
-  paddingTop: 8,
-  borderTop: '1px solid var(--border)',
-};
-
-const dangerSmallButtonStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'transparent',
-  border: '1px solid rgba(185,67,77,0.35)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--red)',
-  padding: 6,
+  justifyContent: 'space-between',
+  gap: 8,
+  color: 'var(--text-primary)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 11,
-};
-
-const summaryGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr auto',
-  gap: '5px 8px',
-  fontSize: 12,
-  color: 'var(--text-secondary)',
-};
-
-const setupWarningStyle: React.CSSProperties = {
-  marginTop: 8,
-  padding: 7,
-  border: '1px solid rgba(185,67,77,0.28)',
-  borderRadius: 'var(--radius-sm)',
-  background: 'rgba(185,67,77,0.09)',
-  color: 'var(--red)',
-  fontSize: 12,
-};
-
-const startButtonStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: 8,
-  background: 'var(--cyan)',
-  border: '1px solid var(--cyan)',
-  borderRadius: 'var(--radius-sm)',
-  color: '#fff',
-  padding: 8,
-  fontFamily: 'var(--font-mono)',
-  fontSize: 11,
-  fontWeight: 700,
-  textTransform: 'uppercase',
+  fontSize: 9.5,
   letterSpacing: 1,
+  textTransform: 'uppercase',
+  fontWeight: 800,
 };
 
-const activeNoticeStyle: React.CSSProperties = {
-  marginTop: 8,
-  padding: 8,
-  border: '1px solid var(--green)',
+const noticeStyle = (tone: 'info' | 'warning'): React.CSSProperties => ({
+  display: 'grid',
+  gap: 4,
+  padding: '8px 9px',
+  background: tone === 'warning' ? 'rgba(166,111,31,0.08)' : 'rgba(34,121,157,0.08)',
+  border: `1px solid ${tone === 'warning' ? 'var(--amber-dim)' : 'var(--cyan-dim)'}`,
   borderRadius: 'var(--radius-sm)',
-  color: 'var(--green)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  textTransform: 'uppercase',
-  letterSpacing: 0.8,
-};
+  color: 'var(--text-primary)',
+  fontSize: 11.5,
+  lineHeight: 1.35,
+});
 
-const miniLabelStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 9,
-  color: 'var(--text-secondary)',
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  marginBottom: 5,
-};
-
-const smallInputStyle: React.CSSProperties = {
+const inputStyle: React.CSSProperties = {
   width: '100%',
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-primary)',
-  padding: '5px 7px',
+  padding: '6px 8px',
   fontSize: 12,
+  minWidth: 0,
+};
+
+const filterGridStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 5,
+};
+
+const filterButtonStyle = (active: boolean): React.CSSProperties => ({
+  minHeight: 24,
+  padding: '4px 7px',
+  background: active ? 'rgba(34,121,157,0.10)' : 'transparent',
+  border: `1px solid ${active ? 'var(--cyan-dim)' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-sm)',
+  color: active ? 'var(--cyan)' : 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  textTransform: 'uppercase',
+});
+
+const addGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 6,
+};
+
+const checkRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+};
+
+const checkColumnStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 5,
 };
 
 const checkStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: 5,
-  marginTop: 7,
-  marginRight: 10,
+  color: 'var(--text-secondary)',
+  fontSize: 11.5,
+};
+
+const officerListStyle: React.CSSProperties = {
+  maxHeight: 220,
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  paddingRight: 2,
+};
+
+const officerRowStyle = (selected: boolean): React.CSSProperties => ({
+  width: '100%',
+  padding: 8,
+  background: selected ? 'rgba(34,121,157,0.08)' : 'var(--bg-card)',
+  border: `1px solid ${selected ? 'var(--cyan-dim)' : 'var(--border)'}`,
+  borderLeft: `3px solid ${selected ? 'var(--cyan)' : 'var(--border-bright)'}`,
+  borderRadius: 'var(--radius-sm)',
+  textAlign: 'left',
+  display: 'grid',
+  gap: 5,
+});
+
+const officerTopRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 8,
+  alignItems: 'center',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+};
+
+const badgeRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 4,
+};
+
+const badgeStyle = (tone: 'dark' | 'plain' | 'rose' | 'blue' | 'green' | 'amber'): React.CSSProperties => {
+  const colors = {
+    dark: ['var(--text-primary)', '#ffffff', 'var(--text-primary)'],
+    plain: ['var(--text-secondary)', 'transparent', 'var(--border-bright)'],
+    rose: ['#9b4f84', 'rgba(155,79,132,0.10)', '#9b4f84'],
+    blue: ['var(--cyan)', 'rgba(34,121,157,0.10)', 'var(--cyan-dim)'],
+    green: ['var(--green)', 'rgba(39,122,87,0.10)', 'var(--green-dim)'],
+    amber: ['var(--amber)', 'rgba(166,111,31,0.10)', 'var(--amber-dim)'],
+  }[tone];
+  return {
+    minHeight: 17,
+    padding: '2px 5px',
+    borderRadius: 'var(--radius-sm)',
+    border: `1px solid ${colors[2]}`,
+    background: colors[1],
+    color: colors[0],
+    fontFamily: 'var(--font-mono)',
+    fontSize: 8,
+    fontWeight: 800,
+    textTransform: 'uppercase',
+  };
+};
+
+const statusBadgeStyle = (status: Officer['status']): React.CSSProperties => ({
+  color: status === 'unavailable' ? 'var(--red)' : status === 'on_incident' || status === 'busy' ? 'var(--amber)' : status === 'on_escort' ? '#73558a' : 'var(--green)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  textTransform: 'uppercase',
+  whiteSpace: 'nowrap',
+});
+
+const homeUnitStyle: React.CSSProperties = {
+  color: 'var(--text-secondary)',
+  fontSize: 10.5,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
+const emptyTextStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   fontSize: 12,
 };
 
+const editPanelStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 8,
+};
+
+const fieldStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 4,
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  letterSpacing: 0.8,
+  textTransform: 'uppercase',
+};
+
+const twoColumnStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 6,
+};
+
+const buttonRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr auto',
+  gap: 6,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  minHeight: 28,
+  background: 'var(--cyan)',
+  border: '1px solid var(--cyan)',
+  borderRadius: 'var(--radius-sm)',
+  color: '#ffffff',
+  padding: '5px 8px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  minHeight: 28,
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  padding: '5px 8px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const dangerButtonStyle: React.CSSProperties = {
+  minHeight: 28,
+  background: 'rgba(185,67,77,0.08)',
+  border: '1px solid var(--red-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--red)',
+  padding: '5px 8px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const setupToggleStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: 30,
+  background: '#ffffff',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+  fontWeight: 800,
+};
+
 const smallButtonStyle: React.CSSProperties = {
-  flex: 1,
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   padding: 6,
   fontFamily: 'var(--font-mono)',
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 700,
 };
 
-const wideSmallButtonStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: 7,
-  background: 'transparent',
-  border: '1px solid var(--cyan-dim)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--cyan)',
-  padding: 6,
-  fontFamily: 'var(--font-mono)',
-  fontSize: 11,
+const minimumListStyle: React.CSSProperties = {
+  maxHeight: 135,
+  overflowY: 'auto',
+  display: 'grid',
+  gap: 5,
 };
 
 const minRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '1fr 72px',
+  gridTemplateColumns: '1fr 58px',
   gap: 6,
   alignItems: 'center',
   fontSize: 11,
   color: 'var(--text-secondary)',
+};
+
+const startButtonStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: 30,
+  background: 'var(--green)',
+  border: '1px solid var(--green)',
+  borderRadius: 'var(--radius-sm)',
+  color: '#fff',
+  padding: 6,
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const activeNoticeStyle: React.CSSProperties = {
+  padding: 7,
+  border: '1px solid var(--green-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--green)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+};
+
+const smallMutedStyle: React.CSSProperties = {
+  color: 'var(--text-muted)',
+  fontSize: 10.5,
+  lineHeight: 1.3,
 };

@@ -29,9 +29,9 @@ export const TestingResetPanel: React.FC<Props> = ({
       : pendingAction === 'reset-current'
       ? 'Kas oled kindel? See eemaldab aktiivsed sündmused, logi ja taastab ametnike algseisu.'
       : pendingAction === 'reset-selected-group'
-      ? `Kas oled kindel? See lähtestab ainult grupi tööseisu: ${simulation.classroomGroupName ?? 'valitud grupp'}.`
+      ? `Kas oled kindel? See lähtestab ainult grupi ühisesse algseisu: ${simulation.classroomGroupName ?? 'valitud grupp'}.`
       : pendingAction === 'reset-all-groups'
-      ? 'Kas oled kindel? See lähtestab kõigi gruppide tööseisu.'
+      ? 'Kas oled kindel? See lähtestab kõik grupid ühisesse algseisu.'
       : '';
 
   const runPendingAction = () => {
@@ -62,10 +62,10 @@ export const TestingResetPanel: React.FC<Props> = ({
             {classroomExercise ? (
               <>
                 <button style={dangerButtonStyle} onClick={() => setPendingAction('reset-selected-group')}>
-                  Lähtesta valitud grupp
+                  Lähtesta grupp ühisesse algseisu
                 </button>
                 <button style={dangerButtonStyle} onClick={() => setPendingAction('reset-all-groups')}>
-                  Lähtesta kõik grupid
+                  Lähtesta kõik grupid ühisesse algseisu
                 </button>
               </>
             ) : (

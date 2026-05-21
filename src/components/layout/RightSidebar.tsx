@@ -173,7 +173,7 @@ export const RightSidebar: React.FC<Props> = ({
 
             <SidebarSection title="Stsenaariumi tööriistad">
               <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
-                {canActivateAllGroups ? 'Saada situatsioon kõigile gruppidele' : 'Lisa sündmus'}
+                {canActivateAllGroups ? 'Lisa / saada situatsioon' : 'Lisa sündmus'}
               </button>
               <ScenarioOverviewPanel
                 buildings={buildings}

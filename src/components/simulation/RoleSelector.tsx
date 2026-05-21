@@ -63,16 +63,27 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJ
               <input value={teacherName} onChange={(event) => setTeacherName(event.target.value)} style={inputStyle} />
             </Field>
             {createMode === 'classroom' && (
-              <Field label="Gruppide arv">
-                <input
-                  type="number"
-                  min={2}
-                  max={8}
-                  value={groupCount}
-                  onChange={(event) => setGroupCount(Number(event.target.value))}
-                  style={inputStyle}
-                />
-              </Field>
+              <>
+                <Field label="Gruppide arv">
+                  <input
+                    type="number"
+                    min={2}
+                    max={8}
+                    value={groupCount}
+                    onChange={(event) => setGroupCount(Number(event.target.value))}
+                    style={inputStyle}
+                  />
+                </Field>
+                <div style={classroomBaselineStyle}>
+                  <strong>Ühine algseis kõigile gruppidele</strong>
+                  <span>Kõik grupid alustavad sama üksuste, ametnike, õiguste ja algpaigutusega. Erinevused tekivad ainult gruppide otsustest või õppejõu eraldi sekkumisest.</span>
+                  <label style={disabledToggleStyle}>
+                    <input type="checkbox" disabled />
+                    Kasuta gruppidel erinevat algseisu
+                  </label>
+                  <span style={disabledNoteStyle}>Erinev algseis lisatakse hiljem.</span>
+                </div>
+              </>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
@@ -241,6 +252,33 @@ const roleNoteStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 11,
   lineHeight: 1.35,
+};
+
+const classroomBaselineStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 5,
+  marginBottom: 14,
+  padding: '9px 10px',
+  background: 'rgba(34,121,157,0.08)',
+  border: '1px solid var(--cyan-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  lineHeight: 1.35,
+};
+
+const disabledToggleStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 7,
+  marginTop: 4,
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+};
+
+const disabledNoteStyle: React.CSSProperties = {
+  color: 'var(--text-muted)',
+  fontSize: 11,
 };
 
 const primaryButtonStyle: React.CSSProperties = {

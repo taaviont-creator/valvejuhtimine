@@ -36,7 +36,14 @@ export const Header: React.FC<Props> = ({
       : syncStatus === 'loading'
       ? 'Sünkroonimine'
       : 'Sünkroonimise viga';
-  const statusLabel = simulation.status === 'setup' ? 'Ettevalmistus' : simulation.status === 'active' ? 'Käimas' : 'Lõpetatud';
+  const statusLabel =
+    simulation.status === 'setup'
+      ? 'Ettevalmistus'
+      : simulation.status === 'active'
+      ? 'Käimas'
+      : simulation.status === 'archived'
+      ? 'Arhiveeritud'
+      : 'Lõpetatud';
 
   return (
     <div style={headerStyle}>

@@ -19,6 +19,26 @@ export const officerStatusLabels: Record<Officer['status'], string> = {
   unavailable: 'Mängust väljas',
 };
 
+export const officerGenderLabels: Record<Officer['gender'], string> = {
+  male: 'Mees',
+  female: 'Naine',
+};
+
+const genderShortLabels: Record<Officer['gender'], string> = {
+  male: 'M',
+  female: 'N',
+};
+
+const genderColors: Record<Officer['gender'], string> = {
+  male: '#22799d',
+  female: '#9b4f84',
+};
+
+const genderBackgrounds: Record<Officer['gender'], string> = {
+  male: 'rgba(34,121,157,0.12)',
+  female: 'rgba(155,79,132,0.13)',
+};
+
 const statusColors: Record<Officer['status'], string> = {
   available: 'var(--green)',
   in_building: 'var(--cyan)',
@@ -61,10 +81,10 @@ export const OfficerMarker: React.FC<Props> = ({
         event.stopPropagation();
         onClick?.();
       }}
-      title={title ?? `${officer.name} | ${isLead ? 'Vanemvalvur' : 'Valvur'} | ${officerStatusLabels[officer.status]}`}
+      title={title ?? `${officer.name} | ${isLead ? 'Vanemvalvur' : 'Valvur'} | ${officerGenderLabels[officer.gender]} | ${officerStatusLabels[officer.status]}`}
       style={markerStyle(color, statusBackgrounds[officer.status], selected, isLead, compact, disabled)}
     >
-      <span style={personStyle(color, isLead, compact)}>
+      <span style={personStyle(genderColors[officer.gender], compact)}>
         <span style={headStyle(compact)} />
         <span style={bodyStyle(compact)} />
       </span>
@@ -73,6 +93,9 @@ export const OfficerMarker: React.FC<Props> = ({
         {!compact && <span style={statusStyle(color)}>{officerStatusLabels[officer.status]}</span>}
       </span>
       <span style={roleStyle(isLead)}>{isLead ? 'VV' : 'V'}</span>
+      <span style={genderStyle(genderColors[officer.gender], genderBackgrounds[officer.gender])}>
+        {genderShortLabels[officer.gender]}
+      </span>
       <span style={permissionStackStyle}>
         {officer.hasEscortPermission && <span style={permissionStyle('var(--green)')}>S</span>}
         {officer.hasTaserPermission && <span style={permissionStyle('var(--amber)')}>EŠR</span>}
@@ -93,7 +116,7 @@ const markerStyle = (
   alignItems: 'center',
   gap: compact ? 3 : 5,
   minHeight: compact ? 25 : 32,
-  maxWidth: compact ? 118 : 170,
+  maxWidth: compact ? 132 : 185,
   padding: compact ? '2px 5px' : '4px 7px',
   border: `${selected ? 2 : isLead ? 2 : 1}px solid ${selected ? 'var(--cyan)' : isLead ? 'var(--text-primary)' : color}`,
   borderRadius: 999,
@@ -107,17 +130,18 @@ const markerStyle = (
   overflow: 'hidden',
 });
 
-const personStyle = (color: string, isLead: boolean, compact: boolean): React.CSSProperties => ({
+const personStyle = (color: string, compact: boolean): React.CSSProperties => ({
   width: compact ? 17 : 22,
   height: compact ? 17 : 22,
   borderRadius: '50%',
-  border: `2px solid ${isLead ? 'var(--text-primary)' : color}`,
+  border: `2px solid ${color}`,
   display: 'inline-flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
   flexShrink: 0,
   background: '#fff',
+  color,
 });
 
 const headStyle = (compact: boolean): React.CSSProperties => ({
@@ -167,6 +191,21 @@ const roleStyle = (isLead: boolean): React.CSSProperties => ({
   color: isLead ? '#fff' : 'var(--text-secondary)',
   fontSize: 8,
   fontWeight: 800,
+  flexShrink: 0,
+});
+
+const genderStyle = (color: string, background: string): React.CSSProperties => ({
+  minWidth: 16,
+  height: 15,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 3,
+  background,
+  border: `1px solid ${color}`,
+  color,
+  fontSize: 8,
+  fontWeight: 900,
   flexShrink: 0,
 });
 

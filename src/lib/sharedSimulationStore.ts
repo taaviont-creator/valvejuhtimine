@@ -14,6 +14,12 @@ export type SnapshotLoadResult = {
   matchedRole?: AppRole;
 };
 
+export type SnapshotListResult = {
+  snapshots: SimulationSnapshot[];
+  mode: 'supabase' | 'local';
+  message?: string;
+};
+
 const supabaseUrl = cleanEnvValue(import.meta.env.VITE_SUPABASE_URL)?.replace(/\/$/, '');
 const supabaseKey = cleanEnvValue(import.meta.env.VITE_SUPABASE_ANON_KEY);
 const unsafeKeyReason = supabaseKey && looksLikeServiceRoleKey(supabaseKey)
@@ -111,6 +117,36 @@ function getLocalById(simulationId: string): SimulationSnapshot | null {
   } catch {
     return null;
   }
+}
+
+function isSimulationSnapshot(value: unknown): value is SimulationSnapshot {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<SimulationSnapshot>;
+  return Boolean(candidate.simulation?.id && Array.isArray(candidate.buildings) && Array.isArray(candidate.officers));
+}
+
+function listLocalSnapshots(): SimulationSnapshot[] {
+  const snapshots: SimulationSnapshot[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key || key === INDEX_KEY || !key.startsWith('prison-shift-simulation:')) continue;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) ?? 'null') as unknown;
+      if (isSimulationSnapshot(parsed)) snapshots.push(parsed);
+    } catch {
+      // Ignore malformed local entries.
+    }
+  }
+  return snapshots.sort((left, right) => right.simulation.updatedAt.localeCompare(left.simulation.updatedAt));
+}
+
+function deleteLocalSnapshot(simulationId: string) {
+  localStorage.removeItem(snapshotKey(simulationId));
+  const index = readIndex();
+  for (const [code, id] of Object.entries(index)) {
+    if (id === simulationId) delete index[code];
+  }
+  writeIndex(index);
 }
 
 function getLocalByJoinCode(joinCode: string): SimulationSnapshot | null {
@@ -286,6 +322,46 @@ async function getRemoteById(simulationId: string): Promise<SimulationSnapshot |
 
   const rows = (await response.json()) as Array<{ payload: SimulationSnapshot }>;
   return rows[0]?.payload ?? null;
+}
+
+async function listRemoteSnapshots(): Promise<SimulationSnapshot[]> {
+  if (!hasSupabaseConfig) return [];
+
+  const query = 'select=payload,updated_at&order=updated_at.desc&limit=100';
+  const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?${query}`, {
+    headers: headers(),
+  });
+
+  if (!response.ok) {
+    const error = await describeSupabaseError(response, 'simulatsioonide nimekiri');
+    if (error.includes('updated_at')) {
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?select=payload&limit=100`, {
+        headers: headers(),
+      });
+      if (!legacyResponse.ok) {
+        throw new Error(await describeSupabaseError(legacyResponse, 'simulatsioonide nimekiri'));
+      }
+      const legacyRows = (await legacyResponse.json()) as Array<{ payload: SimulationSnapshot }>;
+      return legacyRows.map((row) => row.payload).filter(isSimulationSnapshot);
+    }
+    throw new Error(error);
+  }
+
+  const rows = (await response.json()) as Array<{ payload: SimulationSnapshot }>;
+  return rows.map((row) => row.payload).filter(isSimulationSnapshot);
+}
+
+async function deleteRemoteSnapshot(simulationId: string) {
+  if (!hasSupabaseConfig) return;
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?id=eq.${encodeURIComponent(simulationId)}`, {
+    method: 'DELETE',
+    headers: headers({ Prefer: 'return=minimal' }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await describeSupabaseError(response, 'simulatsiooni kustutamine'));
+  }
 }
 
 async function getRemoteClassroomByTeacherCode(teacherCode: string): Promise<ClassroomExercise | null> {
@@ -475,6 +551,59 @@ export async function loadSnapshotById(simulationId: string): Promise<SnapshotLo
     mode: 'local',
     message,
   };
+}
+
+export async function listSimulationSnapshots(): Promise<SnapshotListResult> {
+  let message: string | undefined;
+
+  if (hasSupabaseConfig) {
+    try {
+      const remote = await listRemoteSnapshots();
+      remote.forEach(saveLocal);
+      return { snapshots: remote, mode: 'supabase' };
+    } catch {
+      message = 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku nimekirja';
+    }
+  }
+
+  return {
+    snapshots: listLocalSnapshots(),
+    mode: 'local',
+    message,
+  };
+}
+
+export async function archiveSimulationSnapshot(simulationId: string): Promise<'supabase' | 'local'> {
+  const result = await loadSnapshotById(simulationId);
+  if (!result.snapshot) {
+    throw new Error('Simulatsiooni ei leitud.');
+  }
+  const archived: SimulationSnapshot = {
+    ...result.snapshot,
+    simulation: {
+      ...result.snapshot.simulation,
+      status: 'archived',
+      updatedAt: new Date().toISOString(),
+    },
+  };
+  return saveSnapshot(archived);
+}
+
+export async function deleteSimulationSnapshot(simulationId: string): Promise<'supabase' | 'local'> {
+  const local = getLocalById(simulationId);
+  deleteLocalSnapshot(simulationId);
+
+  if (hasSupabaseConfig) {
+    try {
+      await deleteRemoteSnapshot(simulationId);
+      return 'supabase';
+    } catch (error) {
+      if (local) saveLocal(local);
+      throw error;
+    }
+  }
+
+  return 'local';
 }
 
 export function subscribeToSimulation(

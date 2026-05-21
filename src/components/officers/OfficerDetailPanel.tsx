@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building, EscortBus, Incident, Officer } from '../../models';
-import { OfficerMarker, officerStatusLabels } from './OfficerMarker';
+import { OfficerMarker, officerGenderLabels, officerStatusLabels } from './OfficerMarker';
 
 type DestinationType = 'building' | 'incident' | 'bus' | 'pool';
 
@@ -106,6 +106,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
       <div style={infoGridStyle}>
         <InfoRow label="Ametnik" value={officer.name} />
         <InfoRow label="Roll" value={officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'} />
+        <InfoRow label="Sugu" value={officerGenderLabels[officer.gender]} />
         <InfoRow label="Staatus" value={statusLabels[officer.status] ?? officerStatusLabels[officer.status]} />
         <InfoRow label="Asukoht" value={currentLocation} />
         <InfoRow label="Saateõigus" value={officer.hasEscortPermission ? 'Jah' : 'Ei'} />
@@ -143,6 +144,15 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                 accent="var(--cyan)"
               />
             ))}
+            {pool && (
+              <ActionBtn
+                label={pool.name}
+                disabled={unavailable || (officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId)}
+                onClick={() => moveToBuilding(pool.id)}
+                accent="var(--green)"
+                actionLabel="Suuna valves olevate ametnike hulka"
+              />
+            )}
           </div>
         </Section>
       )}

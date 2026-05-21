@@ -11,6 +11,7 @@ import { OverviewEscalationAction } from '../components/incidents/ScenarioOvervi
 import { ClassroomGroupOverview } from '../components/classroom/ClassroomGroupOverview';
 import { SharingToolsPanel } from '../components/sharing/SharingToolsPanel';
 import { TestingResetPanel } from '../components/testing/TestingResetPanel';
+import { SimulationManagementPanel } from '../components/simulation/SimulationManagementPanel';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity, Simulation } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
@@ -49,7 +50,12 @@ export const App: React.FC = () => {
   const isFacilitator = state.role === 'facilitator';
   const simulation = state.simulation;
   const studentIsWaiting = !isFacilitator && simulation.status !== 'active';
-  const blockedStudentMessage = simulation.status === 'completed' ? 'Simulatsioon on lõpetatud.' : 'Simulatsioon ei ole veel käivitatud.';
+  const blockedStudentMessage =
+    simulation.status === 'completed'
+      ? 'Simulatsioon on lõpetatud.'
+      : simulation.status === 'archived'
+      ? 'Simulatsioon on arhiveeritud.'
+      : 'Simulatsioon ei ole veel käivitatud.';
   const ensureStudentCanAct = () => {
     if (isFacilitator || simulation.status === 'active') return true;
     window.alert(blockedStudentMessage);
@@ -294,6 +300,13 @@ export const App: React.FC = () => {
         />
       )}
 
+      {isFacilitator && (
+        <SimulationManagementPanel
+          currentSimulationId={state.simulation.id}
+          onOpenSimulation={sim.openSimulationById}
+        />
+      )}
+
       {isFacilitator && state.classroomExercise && (
         <ClassroomGroupOverview
           exercise={state.classroomExercise}
@@ -321,6 +334,7 @@ export const App: React.FC = () => {
           onUpdateOfficer={sim.updateOfficer}
           onRemoveOfficer={sim.removeOfficer}
           onUpdateBuildingMinimum={sim.updateBuildingMinimum}
+          onUpdateBuildingMinimums={sim.updateBuildingMinimums}
           onSetSetupMode={sim.setSetupMode}
           onStartSimulation={sim.startSimulation}
         />
@@ -378,13 +392,18 @@ export const App: React.FC = () => {
           buildings={state.buildings}
           initialBuildingId={incidentFormBuildingId}
           onSubmit={(buildingId, title, desc, sev, req, escort, taser, externalEscort) => {
-            if (state.classroomExercise && isFacilitator) {
-              void sim.createIncidentForAllClassroomGroups(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
-            } else {
-              sim.createIncident(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
-            }
+            sim.createIncident(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
             setIncidentFormBuildingId(null);
           }}
+          onSubmitAllGroups={
+            state.classroomExercise && isFacilitator
+              ? (buildingId, title, desc, sev, req, escort, taser, externalEscort) => {
+                  void sim.createIncidentForAllClassroomGroups(buildingId, title, desc, sev as IncidentSeverity, req, escort, taser, externalEscort);
+                  setIncidentFormBuildingId(null);
+                }
+              : undefined
+          }
+          selectedGroupName={state.simulation.classroomGroupName}
           onCancel={() => setIncidentFormBuildingId(null)}
         />
       )}
@@ -440,13 +459,19 @@ export const App: React.FC = () => {
 
 const StudentWaitingView: React.FC<{ simulation: Simulation }> = ({ simulation }) => {
   const completed = simulation.status === 'completed';
+  const archived = simulation.status === 'archived';
   return (
     <main style={waitingShellStyle}>
       <section style={waitingCardStyle}>
         <div style={waitingRoleStyle}>Korrapidaja / juht</div>
         <h1 style={waitingTitleStyle}>{simulation.name}</h1>
         {simulation.classroomGroupName && <div style={waitingGroupStyle}>{simulation.classroomGroupName}</div>}
-        {completed ? (
+        {archived ? (
+          <>
+            <p style={waitingLeadStyle}>Simulatsioon on arhiveeritud.</p>
+            <p style={waitingTextStyle}>Õppejõud saab avada uue aktiivse simulatsiooni.</p>
+          </>
+        ) : completed ? (
           <>
             <p style={waitingLeadStyle}>Simulatsioon on lõpetatud.</p>
             <p style={waitingTextStyle}>Õppejõud saab vaadata kokkuvõtet ja logisid.</p>

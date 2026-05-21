@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AppRole,
   AppState,
   Building,
+  ClassroomBaselineState,
   ClassroomExercise,
   ClassroomGroup,
   DecisionLogEntry,
@@ -92,6 +93,12 @@ function assignmentLog(officer: Officer, state: AppState, targetLabel: string, f
     : fallback;
 }
 
+function dutyPoolAssignmentLog(officer: Officer) {
+  return isOccupied(officer)
+    ? `Ametnik ${officer.name} suunati ümber valves olevate ametnike hulka.`
+    : `Ametnik ${officer.name} suunati valves olevate ametnike hulka.`;
+}
+
 function unavailableWarning(officer: Officer) {
   return `Hoiatus tekkis: ametnik ${officer.name} on mängust väljas ja teda ei saa suunata.`;
 }
@@ -150,8 +157,28 @@ function toSnapshot(state: AppState): SimulationSnapshot | null {
   };
 }
 
+function mergeClassroomExercise(
+  primary: ClassroomExercise | null | undefined,
+  fallback: ClassroomExercise | null | undefined
+): ClassroomExercise | null {
+  const base = primary ?? fallback ?? null;
+  if (!base) return null;
+  return {
+    ...base,
+    sharedScenarioEvents: base.sharedScenarioEvents ?? fallback?.sharedScenarioEvents ?? [],
+    baselineState: base.baselineState ?? fallback?.baselineState,
+  };
+}
+
+function snapshotWithClassroomExercise(snapshot: SimulationSnapshot, exercise: ClassroomExercise | null): SimulationSnapshot {
+  return {
+    ...snapshot,
+    classroomExercise: mergeClassroomExercise(exercise, snapshot.classroomExercise),
+  };
+}
+
 function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
-  const classroomExercise = snapshot.classroomExercise ?? state.classroomExercise ?? null;
+  const classroomExercise = mergeClassroomExercise(snapshot.classroomExercise, state.classroomExercise);
   const simulation = {
     ...snapshot.simulation,
     studentCode: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
@@ -197,6 +224,135 @@ function withSnapshot(state: AppState, snapshot: SimulationSnapshot): AppState {
     warnings: calculateWarnings(buildings, officers, incidents, buses),
     syncStatus: hasSupabaseConfig ? 'supabase' : 'local',
     syncMessage: supabaseConfigWarning,
+  };
+}
+
+function createClassroomBaselineState(simulationId: string, setupMode: SetupMode): ClassroomBaselineState {
+  return {
+    setupMode,
+    buildings: createDefaultBuildings(simulationId),
+    officers: createDefaultOfficers(simulationId, setupMode === 'student_places_officers'),
+    buses: createDefaultBuses(simulationId),
+    incidents: [],
+  };
+}
+
+function cloneBaselineStateForSimulation(
+  baseline: ClassroomBaselineState,
+  simulationId: string,
+  incidentIdFactory: () => string = uuidv4
+): Pick<SimulationSnapshot, 'buildings' | 'officers' | 'buses' | 'incidents'> {
+  const incidentIds = new Map<string, string>();
+  const incidents = baseline.incidents.map((incident) => {
+    const nextIncidentId = incidentIdFactory();
+    incidentIds.set(incident.id, nextIncidentId);
+    return {
+      ...incident,
+      id: nextIncidentId,
+      simulationId,
+      updates: (incident.updates ?? []).map((update) => ({
+        ...update,
+        id: incidentIdFactory(),
+        incidentId: nextIncidentId,
+      })),
+    };
+  });
+
+  return {
+    buildings: baseline.buildings.map((building) => ({ ...building, simulationId })),
+    officers: baseline.officers.map((officer) => ({
+      ...officer,
+      simulationId,
+      currentIncidentId: officer.currentIncidentId ? incidentIds.get(officer.currentIncidentId) ?? null : null,
+    })),
+    buses: baseline.buses.map((bus) => ({ ...bus, simulationId })),
+    incidents,
+  };
+}
+
+function snapshotFromClassroomBaseline(
+  snapshot: SimulationSnapshot,
+  exercise: ClassroomExercise,
+  logText: string
+): SimulationSnapshot | null {
+  const baseline = exercise.baselineState ?? snapshot.classroomExercise?.baselineState;
+  if (!baseline) return null;
+  const cloned = cloneBaselineStateForSimulation(baseline, snapshot.simulation.id);
+  return {
+    ...snapshot,
+    classroomExercise: mergeClassroomExercise(exercise, snapshot.classroomExercise),
+    simulation: {
+      ...snapshot.simulation,
+      setupMode: baseline.setupMode,
+      status: 'setup',
+      updatedAt: now(),
+    },
+    participants: snapshot.participants,
+    buildings: cloned.buildings,
+    officers: cloned.officers,
+    buses: cloned.buses,
+    incidents: cloned.incidents,
+    decisionLog: [logEntry(snapshot.simulation.id, 'teacher', logText)],
+  };
+}
+
+function baselineWithSharedIncident(
+  baseline: ClassroomBaselineState | undefined,
+  sharedEvent: SharedScenarioEvent,
+  input: {
+    buildingId: string;
+    title: string;
+    description: string;
+    severity: IncidentSeverity;
+    requiredOfficers: number;
+    requiresEscortPermission: boolean;
+    requiresTaserPermission: boolean;
+    externalEscortRequired: boolean;
+  }
+): ClassroomBaselineState | undefined {
+  if (!baseline) return undefined;
+  if (baseline.incidents.some((incident) => incident.sharedScenarioEventId === sharedEvent.id)) return baseline;
+  const incident: Incident = {
+    id: sharedEvent.id,
+    simulationId: '__classroom_baseline__',
+    sharedScenarioEventId: sharedEvent.id,
+    buildingId: input.buildingId,
+    title: input.title,
+    description: input.description,
+    severity: input.severity,
+    requiredOfficers: input.requiredOfficers,
+    requiresEscortPermission: input.requiresEscortPermission,
+    requiresTaserPermission: input.requiresTaserPermission,
+    requiresSeniorOfficer: false,
+    externalEscortRequired: input.externalEscortRequired,
+    status: 'active',
+    updates: [],
+    createdAt: now(),
+  };
+  return {
+    ...baseline,
+    incidents: [...baseline.incidents, incident],
+  };
+}
+
+function baselineFromSnapshot(snapshot: SimulationSnapshot): ClassroomBaselineState {
+  return {
+    setupMode: snapshot.simulation.setupMode,
+    buildings: snapshot.buildings.map((building) => ({ ...building, simulationId: '__classroom_baseline__' })),
+    officers: snapshot.officers.map((officer) => ({ ...officer, simulationId: '__classroom_baseline__' })),
+    buses: snapshot.buses.map((bus) => ({ ...bus, simulationId: '__classroom_baseline__' })),
+    incidents: snapshot.incidents.map((incident) => ({
+      ...incident,
+      simulationId: '__classroom_baseline__',
+      updates: incident.updates.map((update) => ({ ...update })),
+    })),
+  };
+}
+
+function withSetupLog(snapshot: SimulationSnapshot, text = 'Õppejõud muutis ühist algseisu kõigile gruppidele.'): SimulationSnapshot {
+  return {
+    ...snapshot,
+    decisionLog: [logEntry(snapshot.simulation.id, 'teacher', text), ...snapshot.decisionLog],
   };
 }
 
@@ -429,6 +585,9 @@ function removeOfficerFromAllIncidents(officerId: string, incidents: Incident[])
 
 export function useSimulation() {
   const [state, setState] = useState<AppState>(() => emptyState());
+  const stateRef = useRef(state);
+  const setupPropagationQueue = useRef<Promise<unknown>>(Promise.resolve());
+  stateRef.current = state;
 
   const persist = useCallback((next: AppState) => {
     const snapshot = toSnapshot(next);
@@ -460,6 +619,98 @@ export function useSimulation() {
       });
     },
     [persist]
+  );
+
+  const applyClassroomSetupChange = useCallback(
+    async (
+      updater: (snapshot: SimulationSnapshot, group: ClassroomGroup) => SimulationSnapshot | null,
+      logText = 'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+    ) => {
+      const run = async () => {
+        const baseState = stateRef.current;
+        const exercise = baseState.classroomExercise;
+        const localCurrentSnapshot = toSnapshot(baseState);
+        if (!exercise || baseState.role !== 'facilitator' || !localCurrentSnapshot || localCurrentSnapshot.simulation.status !== 'setup') {
+          return false;
+        }
+
+        const loaded = await Promise.all(exercise.groups.map((group) => loadSnapshotById(group.simulationId)));
+        const snapshots = exercise.groups
+          .map((group, index) => {
+            const loadedSnapshot = loaded[index]?.snapshot ?? null;
+            if (group.simulationId !== localCurrentSnapshot.simulation.id) return loadedSnapshot;
+            if (!loadedSnapshot) return localCurrentSnapshot;
+            return localCurrentSnapshot.simulation.updatedAt >= loadedSnapshot.simulation.updatedAt
+              ? localCurrentSnapshot
+              : loadedSnapshot;
+          })
+          .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot));
+        if (snapshots.length === 0) return false;
+
+        const mergedExercise =
+          snapshots.reduce<ClassroomExercise | null>(
+            (merged, snapshot) => mergeClassroomExercise(merged ?? exercise, snapshot.classroomExercise),
+            exercise
+          ) ?? exercise;
+
+        const updatedSnapshots = exercise.groups
+          .map((group) => {
+            const snapshot = snapshots.find((item) => item.simulation.id === group.simulationId);
+            if (!snapshot || snapshot.simulation.status !== 'setup') return snapshot ?? null;
+            const updated = updater(snapshotWithClassroomExercise(snapshot, mergedExercise), group);
+            if (!updated) return null;
+            return withSetupLog(
+              {
+                ...updated,
+                simulation: {
+                  ...updated.simulation,
+                  updatedAt: now(),
+                },
+              },
+              logText
+            );
+          })
+          .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot));
+
+        const baselineSource =
+          updatedSnapshots.find((snapshot) => snapshot.simulation.id === localCurrentSnapshot.simulation.id) ?? updatedSnapshots[0];
+        if (!baselineSource) return false;
+
+        const updatedExercise: ClassroomExercise = {
+          ...mergedExercise,
+          baselineState: baselineFromSnapshot(baselineSource),
+        };
+        const finalSnapshots = updatedSnapshots.map((snapshot) => ({
+          ...snapshot,
+          classroomExercise: updatedExercise,
+        }));
+
+        await saveClassroomExercise(updatedExercise);
+        await Promise.all(finalSnapshots.map((snapshot) => saveSnapshot(snapshot)));
+
+        setState((current) => {
+          const currentUpdated = finalSnapshots.find((snapshot) => snapshot.simulation.id === current.simulation?.id);
+          const known = new Set(finalSnapshots.map((snapshot) => snapshot.simulation.id));
+          const classroomSnapshots = [
+            ...finalSnapshots,
+            ...current.classroomSnapshots.filter((snapshot) => !known.has(snapshot.simulation.id)),
+          ];
+          if (!currentUpdated) return { ...current, classroomExercise: updatedExercise, classroomSnapshots };
+          return {
+            ...withSnapshot(current, currentUpdated),
+            classroomExercise: updatedExercise,
+            classroomSnapshots,
+          };
+        });
+
+        return true;
+      };
+
+      const queued = setupPropagationQueue.current.then(run, run);
+      setupPropagationQueue.current = queued.catch(() => undefined);
+      return queued;
+    },
+    []
   );
 
   useEffect(() => {
@@ -553,6 +804,7 @@ export function useSimulation() {
       const classroomTeacherCode = uniqueCode(generateTeacherCode, usedCodes);
       const title = name.trim() || 'Valvejuhtimise õppus';
       const teacherDisplayName = displayName.trim() || 'Õppejõud';
+      const baselineState = createClassroomBaselineState('__classroom_baseline__', setupMode);
 
       const groups: ClassroomGroup[] = Array.from({ length: groupCount }, (_, index) => {
         const groupIndex = index + 1;
@@ -573,6 +825,7 @@ export function useSimulation() {
         groupCount,
         groups,
         sharedScenarioEvents: [],
+        baselineState,
       };
 
       const snapshots: SimulationSnapshot[] = groups.map((group) => {
@@ -591,18 +844,17 @@ export function useSimulation() {
           displayName: teacherDisplayName,
           joinedAt: createdAt,
         };
-        const buildings = createDefaultBuildings(group.simulationId);
-        const buses = createDefaultBuses(group.simulationId);
-        const officers = createDefaultOfficers(group.simulationId, setupMode === 'student_places_officers');
+        const baseline = cloneBaselineStateForSimulation(baselineState, group.simulationId);
         return {
           simulation,
           classroomExercise: exercise,
           participants: [participant],
-          buildings,
-          officers,
-          buses,
-          incidents: [],
+          buildings: baseline.buildings,
+          officers: baseline.officers,
+          buses: baseline.buses,
+          incidents: baseline.incidents,
           decisionLog: [
+            logEntry(group.simulationId, 'teacher', 'Ühine algseis kõigile gruppidele loodud.'),
             logEntry(group.simulationId, 'teacher', `Klassiruumi harjutus loodud: ${group.groupName}.`),
             logEntry(group.simulationId, 'teacher', `Simulatsioon loodud (${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'})`),
           ],
@@ -654,6 +906,7 @@ export function useSimulation() {
             if (exercise && group) {
               const groupResult = await loadSnapshotById(group.simulationId);
               if (groupResult.snapshot) {
+                const mergedExercise = mergeClassroomExercise(exercise, groupResult.snapshot.classroomExercise) ?? exercise;
                 const participant: Participant = {
                   id: uuidv4(),
                   simulationId: groupResult.snapshot.simulation.id,
@@ -661,12 +914,12 @@ export function useSimulation() {
                   displayName: displayName.trim() || 'Õppejõud',
                   joinedAt: now(),
                 };
-                const base = withSnapshot(emptyState(), { ...groupResult.snapshot, classroomExercise: exercise });
+                const base = withSnapshot(emptyState(), snapshotWithClassroomExercise(groupResult.snapshot, mergedExercise));
                 const next = finalizeState(base, {
                   ...base,
                   role: 'facilitator',
                   participant,
-                  classroomExercise: exercise,
+                  classroomExercise: mergedExercise,
                   classroomSnapshots: [groupResult.snapshot],
                 });
                 setState(next);
@@ -767,7 +1020,8 @@ export function useSimulation() {
       }
 
       setState((current) => {
-        const base = withSnapshot(current, { ...result.snapshot!, classroomExercise: exercise });
+        const mergedExercise = mergeClassroomExercise(exercise, result.snapshot!.classroomExercise) ?? exercise;
+        const base = withSnapshot(current, snapshotWithClassroomExercise(result.snapshot!, mergedExercise));
         return {
           ...base,
           role: 'facilitator',
@@ -780,7 +1034,7 @@ export function useSimulation() {
                 displayName: 'Õppejõud',
                 joinedAt: now(),
               },
-          classroomExercise: exercise,
+          classroomExercise: mergedExercise,
           syncStatus: result.mode,
           syncMessage: result.message,
         };
@@ -790,6 +1044,43 @@ export function useSimulation() {
     },
     [state.classroomExercise, state.role]
   );
+
+  const openSimulationById = useCallback(async (simulationId: string) => {
+    setState((current) => ({ ...current, syncStatus: 'loading', syncMessage: 'Simulatsiooni avamine...' }));
+    const result = await loadSnapshotById(simulationId);
+    if (!result.snapshot) {
+      setState((current) => ({
+        ...current,
+        syncStatus: result.mode,
+        syncMessage: result.message ?? 'Simulatsiooni ei leitud.',
+      }));
+      return false;
+    }
+
+    const snapshot = result.snapshot;
+    const base = withSnapshot(emptyState(), snapshot);
+    const participant: Participant = {
+      id: uuidv4(),
+      simulationId: snapshot.simulation.id,
+      role: 'teacher',
+      displayName: state.participant?.displayName ?? 'Õppejõud',
+      joinedAt: now(),
+    };
+    const next = finalizeState(base, {
+      ...base,
+      role: 'facilitator',
+      participant,
+      classroomExercise: snapshot.classroomExercise ?? null,
+      syncStatus: result.mode,
+      syncMessage: result.message,
+    });
+
+    setState(next);
+    const teacherCode = snapshot.classroomExercise?.teacherCode ?? snapshot.simulation.teacherCode ?? snapshot.simulation.joinCode;
+    const groupParam = snapshot.classroomExercise ? `&group=${snapshot.simulation.id}` : '';
+    window.history.replaceState(null, '', `?join=${teacherCode}&role=teacher${groupParam}`);
+    return true;
+  }, [state.participant?.displayName]);
 
   const resetSimulation = useCallback(() => {
     commit((current) => {
@@ -821,10 +1112,17 @@ export function useSimulation() {
       const result = await loadSnapshotById(simulationId);
       if (!group || !result.snapshot) return false;
 
-      const reset = resetSnapshot(
-        { ...result.snapshot, classroomExercise: exercise },
-        `Õppejõud lähtestas grupi: ${group.groupName}.`
-      );
+      const mergedExercise = mergeClassroomExercise(exercise, result.snapshot.classroomExercise) ?? exercise;
+      const reset =
+        snapshotFromClassroomBaseline(
+          result.snapshot,
+          mergedExercise,
+          `Õppejõud lähtestas grupi ühisesse algseisu: ${group.groupName}.`
+        ) ??
+        resetSnapshot(
+          snapshotWithClassroomExercise(result.snapshot, mergedExercise),
+          `Õppejõud lähtestas grupi: ${group.groupName}.`
+        );
       if (!reset) return false;
 
       await saveSnapshot(reset);
@@ -839,7 +1137,7 @@ export function useSimulation() {
         }
         return {
           ...withSnapshot(current, reset),
-          classroomExercise: exercise,
+          classroomExercise: mergedExercise,
           classroomSnapshots,
         };
       });
@@ -853,13 +1151,25 @@ export function useSimulation() {
     if (!exercise || state.role !== 'facilitator') return false;
 
     const loaded = await Promise.all(exercise.groups.map((group) => loadSnapshotById(group.simulationId)));
+    const exerciseWithBaseline =
+      loaded.reduce<ClassroomExercise | null>(
+        (merged, result) => mergeClassroomExercise(merged ?? exercise, result.snapshot?.classroomExercise),
+        exercise
+      ) ?? exercise;
     const resets = loaded
       .map((result, index) => {
         const group = exercise.groups[index];
         if (!group || !result.snapshot) return null;
-        return resetSnapshot(
-          { ...result.snapshot, classroomExercise: exercise },
-          `Õppejõud lähtestas grupi: ${group.groupName}.`
+        return (
+          snapshotFromClassroomBaseline(
+            result.snapshot,
+            exerciseWithBaseline,
+            `Õppejõud lähtestas grupi ühisesse algseisu: ${group.groupName}.`
+          ) ??
+          resetSnapshot(
+            snapshotWithClassroomExercise(result.snapshot, exerciseWithBaseline),
+            `Õppejõud lähtestas grupi: ${group.groupName}.`
+          )
         );
       })
       .filter((snapshot): snapshot is SimulationSnapshot => Boolean(snapshot));
@@ -871,7 +1181,7 @@ export function useSimulation() {
       if (!currentSnapshot) return { ...current, classroomSnapshots };
       return {
         ...withSnapshot(current, currentSnapshot),
-        classroomExercise: exercise,
+        classroomExercise: exerciseWithBaseline,
         classroomSnapshots,
       };
     });
@@ -919,10 +1229,9 @@ export function useSimulation() {
 
   const setSetupMode = useCallback(
     (setupMode: SetupMode) => {
-      commit((current) => {
-        if (!current.simulation || current.simulation.status !== 'setup') return current;
-        const firstBuildingId = current.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID;
-        const officers = current.officers.map((officer) => ({
+      const updateSnapshot = (snapshot: SimulationSnapshot): SimulationSnapshot => {
+        const firstBuildingId = snapshot.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID;
+        const officers = snapshot.officers.map((officer) => ({
           ...officer,
           status: setupMode === 'student_places_officers' ? ('available' as const) : officer.status === 'available' ? ('in_building' as const) : officer.status,
           homeBuildingId:
@@ -942,19 +1251,38 @@ export function useSimulation() {
           currentIncidentId: null,
           currentBusId: null,
         }));
+        return {
+          ...snapshot,
+          simulation: { ...snapshot.simulation, setupMode },
+          officers,
+          incidents: [],
+        };
+      };
+
+      if (state.classroomExercise && state.role === 'facilitator' && state.simulation?.status === 'setup') {
+        void applyClassroomSetupChange(
+          (snapshot) => updateSnapshot(snapshot),
+          'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+        );
+        return;
+      }
+
+      commit((current) => {
+        if (!current.simulation || current.simulation.status !== 'setup') return current;
+        const updated = updateSnapshot(toSnapshot(current)!);
         return appendLog(
           {
             ...current,
-            simulation: { ...current.simulation, setupMode },
-            officers,
-            incidents: [],
+            simulation: updated.simulation,
+            officers: updated.officers,
+            incidents: updated.incidents,
           },
           'teacher',
           `Algseadistuse režiim muudeti: ${setupMode === 'teacher_assigned' ? 'õppejõud määrab algpaigutuse' : 'korrapidaja paigutab ametnikud'}`
         );
       });
     },
-    [commit]
+    [applyClassroomSetupChange, commit, state.classroomExercise, state.role, state.simulation?.status]
   );
 
   const moveOfficerToBuilding = useCallback(
@@ -991,7 +1319,9 @@ export function useSimulation() {
             incidents: removeOfficerFromAllIncidents(officerId, current.incidents),
           },
           actorForRole(current.role),
-          assignmentLog(officer, current, building.name, `Ametnik ${officer.name} suunati: ${building.name}`)
+          building.isResourcePool
+            ? dutyPoolAssignmentLog(officer)
+            : assignmentLog(officer, current, building.name, `Ametnik ${officer.name} suunati: ${building.name}`)
         );
       });
     },
@@ -1156,9 +1486,23 @@ export function useSimulation() {
         sentToAllGroups: true,
         createdAt: now(),
       };
+      const shouldAddToBaseline = loaded.every((result) => result.snapshot?.simulation.status === 'setup');
+      const baselineState = shouldAddToBaseline
+        ? baselineWithSharedIncident(exercise.baselineState, sharedEvent, {
+            buildingId: selectedBuilding.id,
+            title,
+            description,
+            severity,
+            requiredOfficers,
+            requiresEscortPermission,
+            requiresTaserPermission,
+            externalEscortRequired,
+          })
+        : exercise.baselineState;
       const updatedExercise: ClassroomExercise = {
         ...exercise,
         sharedScenarioEvents: [sharedEvent, ...(exercise.sharedScenarioEvents ?? [])],
+        baselineState,
       };
 
       const updatedSnapshots = loaded
@@ -1511,25 +1855,56 @@ export function useSimulation() {
     [commit]
   );
 
-  const updateBuildingMinimum = useCallback(
-    (buildingId: string, minimumStaff: number) => {
+  const updateBuildingMinimums = useCallback(
+    (minimums: Record<string, number>) => {
+      if (state.classroomExercise && state.role === 'facilitator' && state.simulation?.status === 'setup') {
+        void applyClassroomSetupChange(
+          (snapshot) => {
+            let changed = false;
+            const buildings = snapshot.buildings.map((building) => {
+              if (!(building.id in minimums)) return building;
+              const nextMinimum = Math.max(0, minimums[building.id]);
+              if (building.minimumStaff === nextMinimum) return building;
+              changed = true;
+              return { ...building, minimumStaff: nextMinimum };
+            });
+            if (!changed) return null;
+            return {
+              ...snapshot,
+              buildings,
+            };
+          },
+          'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+        );
+        return;
+      }
+
       commit((current) => {
         if (!current.simulation) return current;
-        const building = current.buildings.find((item) => item.id === buildingId);
-        if (!building) return current;
-        const nextMinimum = Math.max(0, minimumStaff);
-        if (building.minimumStaff === nextMinimum) return current;
-        const buildings = current.buildings.map((item) =>
-          item.id === buildingId ? { ...item, minimumStaff: nextMinimum } : item
-        );
+        let changed = false;
+        const buildings = current.buildings.map((building) => {
+          if (!(building.id in minimums)) return building;
+          const nextMinimum = Math.max(0, minimums[building.id]);
+          if (building.minimumStaff === nextMinimum) return building;
+          changed = true;
+          return { ...building, minimumStaff: nextMinimum };
+        });
+        if (!changed) return current;
         return appendLog(
           { ...current, buildings },
           'teacher',
-          `Õppejõud muutis üksuse miinimumkoosseisu: ${building.name} ${nextMinimum}.`
+          'Õppejõud muutis üksuste miinimumkoosseisu.'
         );
       });
     },
-    [commit]
+    [applyClassroomSetupChange, commit, state.classroomExercise, state.role, state.simulation?.status]
+  );
+
+  const updateBuildingMinimum = useCallback(
+    (buildingId: string, minimumStaff: number) => {
+      updateBuildingMinimums({ [buildingId]: minimumStaff });
+    },
+    [updateBuildingMinimums]
   );
 
   const addOfficer = useCallback(
@@ -1541,6 +1916,40 @@ export function useSimulation() {
       buildingId?: string,
       role: OfficerRole = 'valvur'
     ) => {
+      if (state.classroomExercise && state.role === 'facilitator' && state.simulation?.status === 'setup') {
+        const officerId = uuidv4();
+        const officerName = name.trim() || `A${state.officers.length + 1}`;
+        void applyClassroomSetupChange(
+          (snapshot) => {
+            const targetId =
+              snapshot.simulation.setupMode === 'student_places_officers'
+                ? RESOURCE_POOL_ID
+                : buildingId ?? snapshot.buildings.find((building) => !building.isResourcePool)?.id ?? RESOURCE_POOL_ID;
+            const target = snapshot.buildings.find((building) => building.id === targetId);
+            const officer: Officer = {
+              id: officerId,
+              simulationId: snapshot.simulation.id,
+              name: officerName,
+              gender,
+              role,
+              hasEscortPermission,
+              hasTaserPermission,
+              status: target?.isResourcePool ? 'available' : 'in_building',
+              homeBuildingId: target?.isResourcePool ? null : targetId,
+              currentBuildingId: targetId,
+              currentIncidentId: null,
+              currentBusId: null,
+            };
+            return {
+              ...snapshot,
+              officers: [...snapshot.officers, officer],
+            };
+          },
+          'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+        );
+        return;
+      }
+
       commit((current) => {
         if (!current.simulation || current.simulation.status !== 'setup') return current;
         const targetId =
@@ -1569,7 +1978,7 @@ export function useSimulation() {
         );
       });
     },
-    [commit]
+    [applyClassroomSetupChange, commit, state.classroomExercise, state.officers.length, state.role, state.simulation?.status]
   );
 
   const updateOfficer = useCallback(
@@ -1591,6 +2000,29 @@ export function useSimulation() {
         >
       >
     ) => {
+      if (state.classroomExercise && state.role === 'facilitator' && state.simulation?.status === 'setup') {
+        void applyClassroomSetupChange(
+          (snapshot) => {
+            const officer = snapshot.officers.find((item) => item.id === officerId);
+            if (!officer) return null;
+            return {
+              ...snapshot,
+              officers: snapshot.officers.map((item) =>
+                item.id === officerId
+                  ? {
+                      ...item,
+                      ...patch,
+                      name: patch.name?.trim() ? patch.name.trim() : item.name,
+                    }
+                  : item
+              ),
+            };
+          },
+          'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+        );
+        return;
+      }
+
       commit((current) => {
         if (!current.simulation || current.simulation.status !== 'setup') return current;
         const officer = current.officers.find((item) => item.id === officerId);
@@ -1607,11 +2039,27 @@ export function useSimulation() {
         return appendLog({ ...current, officers }, 'teacher', `Õppejõud muutis ametniku andmeid: ${officer.name}.`);
       });
     },
-    [commit]
+    [applyClassroomSetupChange, commit, state.classroomExercise, state.role, state.simulation?.status]
   );
 
   const removeOfficer = useCallback(
     (officerId: string) => {
+      if (state.classroomExercise && state.role === 'facilitator' && state.simulation?.status === 'setup') {
+        void applyClassroomSetupChange(
+          (snapshot) => {
+            const officer = snapshot.officers.find((item) => item.id === officerId);
+            if (!officer) return null;
+            return {
+              ...snapshot,
+              officers: snapshot.officers.filter((item) => item.id !== officerId),
+              incidents: removeOfficerFromAllIncidents(officerId, snapshot.incidents),
+            };
+          },
+          'Õppejõud muutis ühist algseisu kõigile gruppidele.'
+        );
+        return;
+      }
+
       commit((current) => {
         if (!current.simulation || current.simulation.status !== 'setup') return current;
         const officer = current.officers.find((item) => item.id === officerId);
@@ -1627,7 +2075,7 @@ export function useSimulation() {
         );
       });
     },
-    [commit]
+    [applyClassroomSetupChange, commit, state.classroomExercise, state.role, state.simulation?.status]
   );
 
   const activeIncidents = useMemo(() => state.incidents.filter((incident) => incident.status !== 'closed'), [state.incidents]);
@@ -1641,6 +2089,7 @@ export function useSimulation() {
     joinSimulation,
     leaveSimulation,
     openClassroomGroup,
+    openSimulationById,
     resetSimulation,
     resetClassroomGroup,
     resetAllClassroomGroups,
@@ -1659,6 +2108,7 @@ export function useSimulation() {
     markOfficerInjured,
     closeIncident,
     updateBuildingMinimum,
+    updateBuildingMinimums,
     addOfficer,
     updateOfficer,
     removeOfficer,

@@ -97,11 +97,11 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
                   {canActivateAllGroups && <div style={mutedTextStyle}>Kõik grupid lahendavad sama situatsiooni</div>}
                   {canActivateAllGroups && (
                     <button onClick={() => activateInjectForAllGroups(inject)} style={miniPrimaryStyle}>
-                      Käivita kõigile gruppidele
+                      Saada kõigile gruppidele
                     </button>
                   )}
                   <button onClick={() => activateInject(inject)} style={miniPrimaryStyle}>
-                    {canActivateAllGroups ? 'Käivita ainult valitud grupis' : 'Käivita'}
+                    {canActivateAllGroups ? 'Lisa ainult sellele grupile' : 'Käivita'}
                   </button>
                 </div>
               ))
@@ -154,7 +154,7 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
                       disabled={!selectedOfficerId}
                       style={{ ...dangerButtonStyle, opacity: selectedOfficerId ? 1 : 0.45 }}
                     >
-                      Ametnik vigastatud
+                      Märgi vigastatuks ainult selles grupis
                     </button>
                   </div>
                 </article>

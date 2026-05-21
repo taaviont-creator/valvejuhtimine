@@ -48,9 +48,9 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
     <section style={panelStyle}>
       <div style={headerStyle}>
         <div>
-          <div style={eyebrowStyle}>Ühine stsenaarium</div>
+          <div style={eyebrowStyle}>Ühine algseis</div>
           <div style={titleStyle}>Gruppide võrdlus</div>
-          <div style={subtitleStyle}>Kõik grupid lahendavad sama situatsiooni</div>
+          <div style={subtitleStyle}>Gruppide lahendused sama algseisu põhjal</div>
         </div>
         <div style={teacherCodeStyle}>
           <span>Õppejõu kood</span>

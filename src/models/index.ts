@@ -1,4 +1,4 @@
-export type SimulationStatus = 'setup' | 'active' | 'completed';
+export type SimulationStatus = 'setup' | 'active' | 'completed' | 'archived';
 export type SetupMode = 'teacher_assigned' | 'student_places_officers';
 
 export interface Simulation {
@@ -13,6 +13,7 @@ export interface Simulation {
   classroomGroupCount?: number;
   status: SimulationStatus;
   setupMode: SetupMode;
+  dataVersion?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,6 +150,14 @@ export interface SharedScenarioEvent {
   createdAt: string;
 }
 
+export interface ClassroomBaselineState {
+  setupMode: SetupMode;
+  buildings: Building[];
+  officers: Officer[];
+  buses: EscortBus[];
+  incidents: Incident[];
+}
+
 export interface ClassroomExercise {
   id: string;
   title: string;
@@ -157,6 +166,7 @@ export interface ClassroomExercise {
   groupCount: number;
   groups: ClassroomGroup[];
   sharedScenarioEvents: SharedScenarioEvent[];
+  baselineState?: ClassroomBaselineState;
 }
 
 export type WarningType =

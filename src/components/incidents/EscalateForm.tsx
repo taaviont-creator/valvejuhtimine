@@ -82,11 +82,11 @@ export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSu
                 disabled={!selectedInjuredOfficer}
                 style={{ ...injuryButtonStyle, opacity: selectedInjuredOfficer ? 1 : 0.45 }}
               >
-                Märgi ametnik vigastatuks
+                Märgi vigastatuks ainult selles grupis
               </button>
             </div>
           )}
-          <div style={injuryHintStyle}>Vigastatud ametnik eemaldatakse sündmuselt ja jääb olekusse Mängust väljas.</div>
+          <div style={injuryHintStyle}>Vigastatud ametnik eemaldatakse ainult selle grupi sündmuselt ja jääb olekusse Mängust väljas.</div>
         </div>
 
         <label style={labelStyle}>Olukorra muutus / kommentaar</label>
@@ -119,7 +119,7 @@ export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSu
               disabled={!text.trim()}
               style={{ ...primaryStyle, opacity: text.trim() ? 1 : 0.45 }}
             >
-              Saada eskalatsioon kõigile gruppidele
+              Saada kõigile gruppidele
             </button>
           )}
           <button
@@ -127,7 +127,7 @@ export const EscalateForm: React.FC<Props> = ({ incident, assignedOfficers, onSu
             disabled={!text.trim()}
             style={{ ...(onSubmitAllGroups ? secondaryActionStyle : primaryStyle), opacity: text.trim() ? 1 : 0.45 }}
           >
-            {onSubmitAllGroups ? 'Lisa eskalatsioon sellele grupile' : 'Salvesta eskalatsioon'}
+            {onSubmitAllGroups ? 'Lisa ainult sellele grupile' : 'Salvesta eskalatsioon'}
           </button>
           <button onClick={onCancel} style={secondaryStyle}>Tühista</button>
         </div>

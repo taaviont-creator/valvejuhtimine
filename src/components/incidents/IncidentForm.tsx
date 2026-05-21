@@ -15,10 +15,21 @@ interface Props {
     requiresTaser: boolean,
     externalEscortRequired: boolean
   ) => void;
+  onSubmitAllGroups?: (
+    buildingId: string,
+    title: string,
+    description: string,
+    severity: IncidentSeverity,
+    requiredOfficers: number,
+    requiresEscort: boolean,
+    requiresTaser: boolean,
+    externalEscortRequired: boolean
+  ) => void;
+  selectedGroupName?: string;
   onCancel: () => void;
 }
 
-export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, onSubmit, onCancel }) => {
+export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, onSubmit, onSubmitAllGroups, selectedGroupName, onCancel }) => {
   const selectableBuildings = buildings.filter((building) => !building.isResourcePool);
   const [buildingId, setBuildingId] = useState(initialBuildingId || selectableBuildings[0]?.id || '');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('manual');
@@ -45,12 +56,21 @@ export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, on
     if (!buildingId || !title.trim()) return;
     onSubmit(buildingId, title.trim(), description.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired);
   };
+  const submitAllGroups = () => {
+    if (!buildingId || !title.trim() || !onSubmitAllGroups) return;
+    onSubmitAllGroups(buildingId, title.trim(), description.trim(), severity, requiredOfficers, requiresEscort, requiresTaser, externalEscortRequired);
+  };
 
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={titleStyle}>Õppejõu sündmuse mall</div>
         <div style={metaStyle}>Vali üksus, vali mall, muuda detaile ja käivita sündmus</div>
+        {onSubmitAllGroups && (
+          <div style={classroomNoteStyle}>
+            <strong>Valitud grupp:</strong> {selectedGroupName ?? 'praegune grupp'}. Vali, kas sündmus lisatakse ainult sellele grupile või saadetakse kõigile gruppidele.
+          </div>
+        )}
 
         <FormField label="Üksus / hoone">
           <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} style={inputStyle}>
@@ -103,9 +123,14 @@ export const IncidentForm: React.FC<Props> = ({ buildings, initialBuildingId, on
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={submit} disabled={!title.trim() || !buildingId} style={{ ...primaryStyle, opacity: title.trim() && buildingId ? 1 : 0.45 }}>
-            Käivita sündmus
+          <button onClick={submit} disabled={!title.trim() || !buildingId} style={{ ...(onSubmitAllGroups ? secondaryActionStyle : primaryStyle), opacity: title.trim() && buildingId ? 1 : 0.45 }}>
+            {onSubmitAllGroups ? 'Lisa ainult sellele grupile' : 'Käivita sündmus'}
           </button>
+          {onSubmitAllGroups && (
+            <button onClick={submitAllGroups} disabled={!title.trim() || !buildingId} style={{ ...primaryStyle, opacity: title.trim() && buildingId ? 1 : 0.45 }}>
+              Saada kõigile gruppidele
+            </button>
+          )}
           <button onClick={onCancel} style={secondaryStyle}>Tühista</button>
         </div>
       </div>
@@ -171,6 +196,16 @@ const metaStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
+const classroomNoteStyle: React.CSSProperties = {
+  marginBottom: 14,
+  padding: '8px 10px',
+  background: 'rgba(34,121,157,0.08)',
+  border: '1px solid var(--cyan-dim)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+};
+
 const templateGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
@@ -222,6 +257,13 @@ const primaryStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
   fontSize: 15,
   fontWeight: 700,
+};
+
+const secondaryActionStyle: React.CSSProperties = {
+  ...primaryStyle,
+  background: 'transparent',
+  border: '1px solid var(--cyan)',
+  color: 'var(--cyan)',
 };
 
 const secondaryStyle: React.CSSProperties = {
