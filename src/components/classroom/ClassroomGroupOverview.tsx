@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClassroomExercise, SimulationSnapshot } from '../../models';
+import { ClassroomExercise, Incident, SimulationSnapshot } from '../../models';
 import { calculateWarnings, getIncidentOfficers } from '../../lib/calculations';
 
 interface Props {
@@ -9,8 +9,32 @@ interface Props {
   onOpenGroup: (simulationId: string) => void;
 }
 
+type GroupStatusLabel = 'Reageerimata' | 'Reageerimisel' | 'Piisav ressurss' | 'Puudulik ressurss' | 'Lõpetatud';
+
+function latestDecision(snapshot?: SimulationSnapshot) {
+  return snapshot?.decisionLog.find((entry) => entry.actor !== 'system') ?? snapshot?.decisionLog[0];
+}
+
+function statusForIncident(incident: Incident | undefined, assignedCount: number): GroupStatusLabel {
+  if (!incident) return 'Reageerimata';
+  if (incident.status === 'closed') return 'Lõpetatud';
+  if (assignedCount === 0) return 'Reageerimata';
+  if (assignedCount < incident.requiredOfficers) return 'Puudulik ressurss';
+  if (incident.status === 'under_control') return 'Piisav ressurss';
+  return 'Reageerimisel';
+}
+
+function statusColor(status: GroupStatusLabel) {
+  if (status === 'Lõpetatud' || status === 'Piisav ressurss') return 'var(--green)';
+  if (status === 'Puudulik ressurss') return 'var(--red)';
+  if (status === 'Reageerimisel') return 'var(--amber)';
+  return 'var(--text-muted)';
+}
+
 export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, currentSimulationId, onOpenGroup }) => {
   const snapshotById = new Map(snapshots.map((snapshot) => [snapshot.simulation.id, snapshot]));
+  const sharedIncidentEvents = (exercise.sharedScenarioEvents ?? []).filter((event) => event.kind === 'incident');
+  const mainEvent = sharedIncidentEvents[0];
 
   const copyCode = async (code: string) => {
     try {
@@ -25,7 +49,7 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
       <div style={headerStyle}>
         <div>
           <div style={eyebrowStyle}>Ühine stsenaarium</div>
-          <div style={titleStyle}>Gruppide eraldi lahendused</div>
+          <div style={titleStyle}>Gruppide võrdlus</div>
           <div style={subtitleStyle}>Kõik grupid lahendavad sama situatsiooni</div>
         </div>
         <div style={teacherCodeStyle}>
@@ -36,7 +60,7 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
 
       <div style={contentStyle}>
         <div style={scenarioListStyle}>
-          {(exercise.sharedScenarioEvents ?? []).filter((event) => event.kind === 'incident').slice(0, 3).map((event) => (
+          {sharedIncidentEvents.slice(0, 3).map((event) => (
             <section key={event.id} style={scenarioStyle}>
               <div style={scenarioTitleStyle}>
                 <strong>Ühine sündmus: {event.title}</strong>
@@ -50,29 +74,20 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
                   const warnings = snapshot
                     ? calculateWarnings(snapshot.buildings, snapshot.officers, snapshot.incidents, snapshot.buses).length
                     : 0;
-                  const latest = snapshot?.decisionLog.find((entry) => entry.actor !== 'system') ?? snapshot?.decisionLog[0];
-                  const statusText = incident
-                    ? incident.status === 'closed'
-                      ? 'lõpetatud'
-                      : incident.status === 'under_control'
-                      ? 'kontrolli all'
-                      : incident.status === 'escalated'
-                      ? 'eskaleeritud'
-                      : 'aktiivne'
-                    : 'reageerimata';
+                  const status = statusForIncident(incident, assigned);
 
                   return (
                     <div key={`${event.id}-${group.simulationId}`} style={responseStyle}>
-                      <strong>{group.groupName}: {statusText}</strong>
-                      <span>{incident ? `${assigned}/${incident.requiredOfficers} ametnikku määratud` : 'sündmus avamata'}, hoiatusi {warnings}</span>
-                      <span>{latest?.text ?? 'Grupi otsused puuduvad'}</span>
+                      <strong>{group.groupName}</strong>
+                      <span>{incident ? `${assigned}/${incident.requiredOfficers} ametnikku` : `0/${event.requiredOfficers} ametnikku`}, hoiatusi {warnings}</span>
+                      <span style={{ color: statusColor(status), fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>{status}</span>
                     </div>
                   );
                 })}
               </div>
             </section>
           ))}
-          {(exercise.sharedScenarioEvents ?? []).filter((event) => event.kind === 'incident').length === 0 && (
+          {sharedIncidentEvents.length === 0 && (
             <div style={emptyScenarioStyle}>Ühist situatsiooni pole veel gruppidele saadetud.</div>
           )}
         </div>
@@ -81,21 +96,30 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
           {exercise.groups.map((group) => {
             const snapshot = snapshotById.get(group.simulationId);
             const activeIncidents = snapshot?.incidents.filter((incident) => incident.status !== 'closed').length ?? 0;
+            const mainIncident = mainEvent
+              ? snapshot?.incidents.find((incident) => incident.sharedScenarioEventId === mainEvent.id)
+              : snapshot?.incidents.find((incident) => incident.status !== 'closed');
+            const assigned = mainIncident && snapshot ? getIncidentOfficers(mainIncident, snapshot.officers).length : 0;
+            const required = mainIncident?.requiredOfficers ?? mainEvent?.requiredOfficers ?? 0;
             const warnings = snapshot
               ? calculateWarnings(snapshot.buildings, snapshot.officers, snapshot.incidents, snapshot.buses).length
               : 0;
-            const latest = snapshot?.decisionLog.find((entry) => entry.actor !== 'system') ?? snapshot?.decisionLog[0];
+            const injured = snapshot?.officers.filter((officer) => officer.status === 'unavailable').length ?? 0;
+            const latest = latestDecision(snapshot);
+            const status = statusForIncident(mainIncident, assigned);
             const selected = currentSimulationId === group.simulationId;
 
             return (
               <article key={group.simulationId} style={groupStyle(selected)}>
                 <div style={groupTopStyle}>
                   <strong>{group.groupName}</strong>
-                  <span style={codeStyle}>Õpilase kood {group.studentCode}</span>
+                  <span style={statusBadgeStyle(status)}>{status}</span>
                 </div>
                 <div style={metricRowStyle}>
-                  <span>Aktiivsed sündmused: <strong>{activeIncidents}</strong></span>
+                  <span>Aktiivsed: <strong>{activeIncidents}</strong></span>
+                  <span>Ressurss: <strong>{assigned}/{required}</strong></span>
                   <span>Hoiatused: <strong>{warnings}</strong></span>
+                  <span>Väljas: <strong>{injured}</strong></span>
                 </div>
                 <div style={latestStyle}>Grupi otsused: {latest?.text ?? 'tegevusi pole veel logitud'}</div>
                 <div style={buttonRowStyle}>
@@ -103,7 +127,7 @@ export const ClassroomGroupOverview: React.FC<Props> = ({ exercise, snapshots, c
                     Ava grupi töölaud
                   </button>
                   <button onClick={() => void copyCode(group.studentCode)} style={secondaryButtonStyle}>
-                    Kopeeri õpilase kood
+                    Õpilase kood
                   </button>
                 </div>
               </article>
@@ -257,6 +281,14 @@ const codeStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   whiteSpace: 'nowrap',
 };
+
+const statusBadgeStyle = (status: GroupStatusLabel): React.CSSProperties => ({
+  color: statusColor(status),
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  textTransform: 'uppercase',
+  whiteSpace: 'nowrap',
+});
 
 const metricRowStyle: React.CSSProperties = {
   display: 'grid',
