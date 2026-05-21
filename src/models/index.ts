@@ -7,6 +7,10 @@ export interface Simulation {
   joinCode: string;
   teacherCode?: string;
   studentCode?: string;
+  classroomExerciseId?: string;
+  classroomGroupName?: string;
+  classroomGroupIndex?: number;
+  classroomGroupCount?: number;
   status: SimulationStatus;
   setupMode: SetupMode;
   createdAt: string;
@@ -103,6 +107,23 @@ export interface DecisionLogEntry {
   createdAt: string;
 }
 
+export interface ClassroomGroup {
+  simulationId: string;
+  groupName: string;
+  groupIndex: number;
+  studentCode: string;
+  teacherCode: string;
+}
+
+export interface ClassroomExercise {
+  id: string;
+  title: string;
+  createdAt: string;
+  teacherCode: string;
+  groupCount: number;
+  groups: ClassroomGroup[];
+}
+
 export type WarningType =
   | 'building_below_minimum'
   | 'missing_escort_permission'
@@ -124,6 +145,7 @@ export interface Warning {
 
 export interface SimulationSnapshot {
   simulation: Simulation;
+  classroomExercise?: ClassroomExercise | null;
   participants: Participant[];
   buildings: Building[];
   officers: Officer[];
@@ -136,6 +158,8 @@ export interface AppState extends Omit<SimulationSnapshot, 'simulation'> {
   role: AppRole | null;
   participant: Participant | null;
   simulation: Simulation | null;
+  classroomExercise: ClassroomExercise | null;
+  classroomSnapshots: SimulationSnapshot[];
   warnings: Warning[];
   syncStatus: 'local' | 'supabase' | 'loading' | 'error';
   syncMessage?: string;

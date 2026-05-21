@@ -1,9 +1,10 @@
 import React from 'react';
-import { AppRole, Simulation, Warning } from '../../models';
+import { AppRole, ClassroomExercise, Simulation, Warning } from '../../models';
 
 interface Props {
   role: AppRole;
   simulation: Simulation;
+  classroomExercise?: ClassroomExercise | null;
   warnings: Warning[];
   syncStatus: string;
   syncMessage?: string;
@@ -15,6 +16,7 @@ interface Props {
 export const Header: React.FC<Props> = ({
   role,
   simulation,
+  classroomExercise,
   warnings,
   syncStatus,
   syncMessage,
@@ -23,7 +25,7 @@ export const Header: React.FC<Props> = ({
   onReset,
 }) => {
   const isFacilitator = role === 'facilitator';
-  const teacherCode = simulation.teacherCode ?? simulation.joinCode;
+  const teacherCode = classroomExercise?.teacherCode ?? simulation.teacherCode ?? simulation.joinCode;
   const studentCode = simulation.studentCode ?? simulation.joinCode;
   const joinUrl = `${window.location.origin}${window.location.pathname}?join=${studentCode}&role=student`;
   const syncLabel =
@@ -43,7 +45,10 @@ export const Header: React.FC<Props> = ({
 
       <div>
         <div style={nameStyle}>{simulation.name}</div>
-        <div style={metaStyle}>{statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}</div>
+        <div style={metaStyle}>
+          {statusLabel} | {simulation.setupMode === 'teacher_assigned' ? 'Režiim A' : 'Režiim B'}
+          {simulation.classroomGroupName ? ` | ${simulation.classroomGroupName}` : ''}
+        </div>
       </div>
 
       {isFacilitator && (

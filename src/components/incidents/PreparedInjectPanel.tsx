@@ -7,7 +7,9 @@ interface Props {
   incidents: Incident[];
   activatedInjectIds?: string[];
   onActivateInject: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onActivateInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyEscalation: (inject: PreparedScenarioInject, incidentId: string) => void;
+  canActivateAllGroups?: boolean;
 }
 
 const severityLabels: Record<IncidentSeverity, string> = {
@@ -23,7 +25,15 @@ const statusLabels: Record<PreparedInjectStatus, string> = {
   activated: 'Käivitatud',
 };
 
-export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, activatedInjectIds = [], onActivateInject, onApplyEscalation }) => {
+export const PreparedInjectPanel: React.FC<Props> = ({
+  buildings,
+  incidents,
+  activatedInjectIds = [],
+  onActivateInject,
+  onActivateInjectForAllGroups,
+  onApplyEscalation,
+  canActivateAllGroups = false,
+}) => {
   const selectableBuildings = buildings.filter((building) => !building.isResourcePool);
   const activeIncidents = incidents.filter((incident) => incident.status !== 'closed');
   const initialDrafts = useMemo(
@@ -51,6 +61,14 @@ export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, act
     const building = selectableBuildings.find((item) => item.name === inject.targetBuildingName) ?? selectableBuildings[0];
     if (!building) return;
     onActivateInject(inject, building.id);
+    setDrafts((current) => ({ ...current, [inject.id]: { ...inject, status: 'activated' } }));
+    setEditingId(null);
+  };
+
+  const activateInjectForAllGroups = (inject: PreparedScenarioInject) => {
+    const building = selectableBuildings.find((item) => item.name === inject.targetBuildingName) ?? selectableBuildings[0];
+    if (!building) return;
+    onActivateInjectForAllGroups?.(inject, building.id);
     setDrafts((current) => ({ ...current, [inject.id]: { ...inject, status: 'activated' } }));
     setEditingId(null);
   };
@@ -119,8 +137,13 @@ export const PreparedInjectPanel: React.FC<Props> = ({ buildings, incidents, act
                   {editing ? 'Sulge' : 'Muuda'}
                 </button>
                 <button onClick={() => activateInject(inject)} style={primaryButtonStyle}>
-                  Käivita sündmus
+                  {canActivateAllGroups ? 'Käivita selles grupis' : 'Käivita sündmus'}
                 </button>
+                {canActivateAllGroups && (
+                  <button onClick={() => activateInjectForAllGroups(inject)} style={primaryButtonStyle}>
+                    Käivita kõigis gruppides
+                  </button>
+                )}
                 {inject.canEscalate && (
                   <button
                     onClick={() => applyEscalation(inject)}

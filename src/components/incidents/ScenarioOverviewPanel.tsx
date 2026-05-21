@@ -13,6 +13,8 @@ interface Props {
   decisionLog: DecisionLogEntry[];
   activatedInjectIds: string[];
   onActivateInject: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onActivateInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
+  canActivateAllGroups?: boolean;
   onOpenEscalation: (incidentId: string) => void;
   onQuickEscalation: (incidentId: string, action: OverviewEscalationAction) => void;
   onMarkOfficerInjured: (incidentId: string, officerId: string) => void;
@@ -34,6 +36,8 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
   decisionLog,
   activatedInjectIds,
   onActivateInject,
+  onActivateInjectForAllGroups,
+  canActivateAllGroups = false,
   onOpenEscalation,
   onQuickEscalation,
   onMarkOfficerInjured,
@@ -54,6 +58,12 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
     const building = buildings.find((item) => item.name === inject.targetBuildingName) ?? buildings.find((item) => !item.isResourcePool);
     if (!building) return;
     onActivateInject(inject, building.id);
+  };
+
+  const activateInjectForAllGroups = (inject: PreparedScenarioInject) => {
+    const building = buildings.find((item) => item.name === inject.targetBuildingName) ?? buildings.find((item) => !item.isResourcePool);
+    if (!building) return;
+    onActivateInjectForAllGroups?.(inject, building.id);
   };
 
   return (
@@ -84,7 +94,14 @@ export const ScenarioOverviewPanel: React.FC<Props> = ({
                     <span style={mutedMonoStyle}>{severityLabels[inject.severity]}</span>
                   </div>
                   <div style={mutedTextStyle}>{inject.targetBuildingName} | vajalik {inject.requiredOfficers}</div>
-                  <button onClick={() => activateInject(inject)} style={miniPrimaryStyle}>Käivita</button>
+                  <button onClick={() => activateInject(inject)} style={miniPrimaryStyle}>
+                    {canActivateAllGroups ? 'Käivita selles grupis' : 'Käivita'}
+                  </button>
+                  {canActivateAllGroups && (
+                    <button onClick={() => activateInjectForAllGroups(inject)} style={miniPrimaryStyle}>
+                      Käivita kõigis gruppides
+                    </button>
+                  )}
                 </div>
               ))
             )}

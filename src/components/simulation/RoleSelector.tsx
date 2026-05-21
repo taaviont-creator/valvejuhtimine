@@ -3,17 +3,20 @@ import { AppRole, SetupMode } from '../../models';
 
 interface Props {
   onCreate: (name: string, setupMode: SetupMode, displayName: string) => void;
+  onCreateClassroom: (name: string, setupMode: SetupMode, displayName: string, groupCount: number) => void;
   onJoin: (joinCode: string, requestedRole: AppRole | null, displayName: string) => Promise<boolean>;
   syncStatus: string;
   syncMessage?: string;
 }
 
-export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, syncMessage }) => {
+export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJoin, syncStatus, syncMessage }) => {
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const [simulationName, setSimulationName] = useState('Valvejuhtimise õppus');
   const [teacherName, setTeacherName] = useState('Õppejõud');
   const [joinName, setJoinName] = useState('');
   const [setupMode, setSetupMode] = useState<SetupMode>('teacher_assigned');
+  const [createMode, setCreateMode] = useState<'single' | 'classroom'>('single');
+  const [groupCount, setGroupCount] = useState(6);
   const [joinCode, setJoinCode] = useState(search.get('join') ?? '');
   const requestedRole: AppRole | null = search.get('role') === 'teacher' ? 'facilitator' : search.get('role') === 'student' ? 'commander' : null;
   const [joining, setJoining] = useState(false);
@@ -39,12 +42,38 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
           <section style={panelStyle}>
             <div style={panelTitleStyle}>Õppejõud / läbiviija loob simulatsiooni</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+              <ModeButton
+                title="Loo üks simulatsioon"
+                text="Üks korrapidaja vaade ja üks ühine simulatsiooni olek."
+                active={createMode === 'single'}
+                onClick={() => setCreateMode('single')}
+              />
+              <ModeButton
+                title="Loo mitme grupi harjutus"
+                text="Iga grupp saab oma koodi ja eraldi otsuste oleku."
+                active={createMode === 'classroom'}
+                onClick={() => setCreateMode('classroom')}
+              />
+            </div>
             <Field label="Simulatsiooni nimi">
               <input value={simulationName} onChange={(event) => setSimulationName(event.target.value)} style={inputStyle} />
             </Field>
             <Field label="Õppejõu nimi">
               <input value={teacherName} onChange={(event) => setTeacherName(event.target.value)} style={inputStyle} />
             </Field>
+            {createMode === 'classroom' && (
+              <Field label="Gruppide arv">
+                <input
+                  type="number"
+                  min={2}
+                  max={8}
+                  value={groupCount}
+                  onChange={(event) => setGroupCount(Number(event.target.value))}
+                  style={inputStyle}
+                />
+              </Field>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
               <ModeButton
@@ -61,8 +90,15 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onJoin, syncStatus, sy
               />
             </div>
 
-            <button style={primaryButtonStyle} onClick={() => onCreate(simulationName, setupMode, teacherName)}>
-              Loo simulatsioon õppejõuna
+            <button
+              style={primaryButtonStyle}
+              onClick={() =>
+                createMode === 'classroom'
+                  ? onCreateClassroom(simulationName, setupMode, teacherName, groupCount)
+                  : onCreate(simulationName, setupMode, teacherName)
+              }
+            >
+              {createMode === 'classroom' ? 'Loo grupid' : 'Loo simulatsioon õppejõuna'}
             </button>
           </section>
 

@@ -7,6 +7,7 @@ import { FacilityMap } from '../components/map/FacilityMap';
 import { IncidentForm } from '../components/incidents/IncidentForm';
 import { EscalateForm } from '../components/incidents/EscalateForm';
 import { OverviewEscalationAction } from '../components/incidents/ScenarioOverviewPanel';
+import { ClassroomGroupOverview } from '../components/classroom/ClassroomGroupOverview';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
     return (
       <RoleSelector
         onCreate={sim.createSimulation}
+        onCreateClassroom={sim.createClassroomExercise}
         onJoin={sim.joinSimulation}
         syncStatus={state.syncStatus}
         syncMessage={state.syncMessage}
@@ -80,6 +82,19 @@ export const App: React.FC = () => {
       inject.requiresTaserPermission,
       inject.externalEscortRequired,
       logText ?? `Õppejõud käivitas valmis sündmuse: ${inject.title}`
+    );
+    markPreparedInjectActivated(inject.id);
+  };
+  const activatePreparedInjectForAllGroups = (inject: PreparedScenarioInject, buildingId: string) => {
+    void sim.createIncidentForAllClassroomGroups(
+      buildingId,
+      inject.title,
+      inject.description,
+      inject.severity,
+      inject.requiredOfficers,
+      inject.requiresEscortPermission,
+      inject.requiresTaserPermission,
+      inject.externalEscortRequired
     );
     markPreparedInjectActivated(inject.id);
   };
@@ -181,6 +196,7 @@ export const App: React.FC = () => {
       <Header
         role={state.role}
         simulation={state.simulation}
+        classroomExercise={state.classroomExercise}
         warnings={state.warnings}
         syncStatus={state.syncStatus}
         syncMessage={state.syncMessage}
@@ -188,6 +204,15 @@ export const App: React.FC = () => {
         onStart={isFacilitator ? sim.startSimulation : undefined}
         onReset={isFacilitator ? sim.resetSimulation : undefined}
       />
+
+      {isFacilitator && state.classroomExercise && (
+        <ClassroomGroupOverview
+          exercise={state.classroomExercise}
+          snapshots={state.classroomSnapshots}
+          currentSimulationId={state.simulation.id}
+          onOpenGroup={(simulationId) => void sim.openClassroomGroup(simulationId)}
+        />
+      )}
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <LeftSidebar
@@ -241,8 +266,11 @@ export const App: React.FC = () => {
           onOfficerDropToIncident={assignDroppedOfficerToIncident}
           activatedPreparedInjectIds={activatedPreparedInjectIds}
           onActivatePreparedInject={activatePreparedInject}
+          onActivatePreparedInjectForAllGroups={activatePreparedInjectForAllGroups}
           onActivateOverviewInject={activatePreparedInjectFromOverview}
+          onActivateOverviewInjectForAllGroups={activatePreparedInjectForAllGroups}
           onApplyPreparedEscalation={applyPreparedEscalation}
+          canActivateAllGroups={Boolean(state.classroomExercise)}
           onQuickOverviewEscalation={quickOverviewEscalation}
           onOverviewOfficerInjured={markOfficerInjuredFromOverview}
           onOverviewCloseIncident={closeIncidentFromOverview}

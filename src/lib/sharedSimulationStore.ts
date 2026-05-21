@@ -1,8 +1,10 @@
-import { AppRole, SimulationSnapshot } from '../models';
+import { AppRole, ClassroomExercise, SimulationSnapshot } from '../models';
 
 const INDEX_KEY = 'prison-shift-simulation:index';
+const CLASSROOM_INDEX_KEY = 'prison-shift-simulation:classroom-index';
 const CHANNEL_NAME = 'prison-shift-simulation-sync';
 const TABLE_NAME = 'simulation_snapshots';
+const CLASSROOM_TABLE_NAME = 'classroom_exercises';
 
 type Listener = (snapshot: SimulationSnapshot) => void;
 export type SnapshotLoadResult = {
@@ -45,6 +47,10 @@ function snapshotKey(id: string) {
   return `prison-shift-simulation:${id}`;
 }
 
+function classroomKey(id: string) {
+  return `prison-shift-classroom:${id}`;
+}
+
 export function normalizeJoinCode(joinCode: string): string {
   return joinCode.trim().toUpperCase();
 }
@@ -70,6 +76,18 @@ function writeIndex(index: Record<string, string>) {
   localStorage.setItem(INDEX_KEY, JSON.stringify(index));
 }
 
+function readClassroomIndex(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(CLASSROOM_INDEX_KEY) ?? '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeClassroomIndex(index: Record<string, string>) {
+  localStorage.setItem(CLASSROOM_INDEX_KEY, JSON.stringify(index));
+}
+
 function saveLocal(snapshot: SimulationSnapshot) {
   localStorage.setItem(snapshotKey(snapshot.simulation.id), JSON.stringify(snapshot));
   const index = readIndex();
@@ -77,6 +95,13 @@ function saveLocal(snapshot: SimulationSnapshot) {
     index[normalizeJoinCode(code)] = snapshot.simulation.id;
   }
   writeIndex(index);
+}
+
+function saveClassroomLocal(exercise: ClassroomExercise) {
+  localStorage.setItem(classroomKey(exercise.id), JSON.stringify(exercise));
+  const index = readClassroomIndex();
+  index[normalizeJoinCode(exercise.teacherCode)] = exercise.id;
+  writeClassroomIndex(index);
 }
 
 function getLocalById(simulationId: string): SimulationSnapshot | null {
@@ -91,6 +116,17 @@ function getLocalById(simulationId: string): SimulationSnapshot | null {
 function getLocalByJoinCode(joinCode: string): SimulationSnapshot | null {
   const id = readIndex()[normalizeJoinCode(joinCode)];
   return id ? getLocalById(id) : null;
+}
+
+function getLocalClassroomByTeacherCode(teacherCode: string): ClassroomExercise | null {
+  const id = readClassroomIndex()[normalizeJoinCode(teacherCode)];
+  if (!id) return null;
+  try {
+    const raw = localStorage.getItem(classroomKey(id));
+    return raw ? (JSON.parse(raw) as ClassroomExercise) : null;
+  } catch {
+    return null;
+  }
 }
 
 function accessCodes(snapshot: SimulationSnapshot): string[] {
@@ -117,6 +153,9 @@ async function saveRemote(snapshot: SimulationSnapshot) {
     join_code: snapshot.simulation.joinCode,
     teacher_code: snapshot.simulation.teacherCode,
     student_code: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+    classroom_exercise_id: snapshot.simulation.classroomExerciseId,
+    group_name: snapshot.simulation.classroomGroupName,
+    group_index: snapshot.simulation.classroomGroupIndex,
     payload: snapshot,
     updated_at: snapshot.simulation.updatedAt,
   };
@@ -129,6 +168,22 @@ async function saveRemote(snapshot: SimulationSnapshot) {
 
   if (!response.ok) {
     const error = await describeSupabaseError(response, 'save');
+    if (error.includes('classroom_exercise_id') || error.includes('group_name') || error.includes('group_index')) {
+      const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?on_conflict=id`, {
+        method: 'POST',
+        headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({
+          id: snapshot.simulation.id,
+          join_code: snapshot.simulation.joinCode,
+          teacher_code: snapshot.simulation.teacherCode,
+          student_code: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+          payload: snapshot,
+          updated_at: snapshot.simulation.updatedAt,
+        }),
+      });
+      if (legacyResponse.ok) return;
+      throw new Error(await describeSupabaseError(legacyResponse, 'save'));
+    }
     if (error.includes('teacher_code') || error.includes('student_code')) {
       const legacyResponse = await fetch(`${supabaseUrl}/rest/v1/${TABLE_NAME}?on_conflict=id`, {
         method: 'POST',
@@ -144,6 +199,28 @@ async function saveRemote(snapshot: SimulationSnapshot) {
       throw new Error(await describeSupabaseError(legacyResponse, 'save'));
     }
     throw new Error(error);
+  }
+}
+
+async function saveClassroomRemote(exercise: ClassroomExercise) {
+  if (!hasSupabaseConfig) return;
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${CLASSROOM_TABLE_NAME}?on_conflict=id`, {
+    method: 'POST',
+    headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+    body: JSON.stringify({
+      id: exercise.id,
+      title: exercise.title,
+      teacher_code: exercise.teacherCode,
+      group_count: exercise.groupCount,
+      groups: exercise.groups,
+      created_at: exercise.createdAt,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await describeSupabaseError(response, 'save classroom exercise'));
   }
 }
 
@@ -192,6 +269,39 @@ async function getRemoteById(simulationId: string): Promise<SimulationSnapshot |
   return rows[0]?.payload ?? null;
 }
 
+async function getRemoteClassroomByTeacherCode(teacherCode: string): Promise<ClassroomExercise | null> {
+  if (!hasSupabaseConfig) return null;
+
+  const normalized = encodeURIComponent(normalizeJoinCode(teacherCode));
+  const query = `teacher_code=eq.${normalized}&select=id,title,teacher_code,group_count,groups,created_at&limit=1`;
+  const response = await fetch(`${supabaseUrl}/rest/v1/${CLASSROOM_TABLE_NAME}?${query}`, {
+    headers: headers(),
+  });
+
+  if (!response.ok) {
+    throw new Error(await describeSupabaseError(response, 'load classroom exercise'));
+  }
+
+  const rows = (await response.json()) as Array<{
+    id: string;
+    title: string;
+    teacher_code: string;
+    group_count: number;
+    groups: ClassroomExercise['groups'];
+    created_at: string;
+  }>;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    createdAt: row.created_at,
+    teacherCode: row.teacher_code,
+    groupCount: row.group_count,
+    groups: row.groups,
+  };
+}
+
 export async function saveSnapshot(snapshot: SimulationSnapshot): Promise<'supabase' | 'local'> {
   saveLocal(snapshot);
 
@@ -211,6 +321,52 @@ export async function saveSnapshot(snapshot: SimulationSnapshot): Promise<'supab
   }
 
   return 'local';
+}
+
+export async function saveClassroomExercise(exercise: ClassroomExercise): Promise<'supabase' | 'local'> {
+  saveClassroomLocal(exercise);
+
+  if (hasSupabaseConfig) {
+    try {
+      await saveClassroomRemote(exercise);
+      return 'supabase';
+    } catch {
+      return 'local';
+    }
+  }
+
+  return 'local';
+}
+
+export async function getClassroomExerciseByTeacherCode(teacherCode: string): Promise<{
+  exercise: ClassroomExercise | null;
+  mode: 'supabase' | 'local';
+  message?: string;
+}> {
+  const normalized = normalizeJoinCode(teacherCode);
+  let message: string | undefined;
+
+  if (!normalized) {
+    return { exercise: null, mode: hasSupabaseConfig ? 'supabase' : 'local' };
+  }
+
+  if (hasSupabaseConfig) {
+    try {
+      const remote = await getRemoteClassroomByTeacherCode(normalized);
+      if (remote) {
+        saveClassroomLocal(remote);
+        return { exercise: remote, mode: 'supabase' };
+      }
+    } catch {
+      message = 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku režiimi';
+    }
+  }
+
+  return {
+    exercise: getLocalClassroomByTeacherCode(normalized),
+    mode: 'local',
+    message,
+  };
 }
 
 export async function getSimulationByJoinCode(joinCode: string): Promise<SnapshotLoadResult> {
@@ -247,6 +403,28 @@ export async function loadSnapshotByJoinCode(joinCode: string): Promise<Simulati
 
 export function loadLocalSnapshotById(simulationId: string): SimulationSnapshot | null {
   return getLocalById(simulationId);
+}
+
+export async function loadSnapshotById(simulationId: string): Promise<SnapshotLoadResult> {
+  let message: string | undefined;
+
+  if (hasSupabaseConfig) {
+    try {
+      const remote = await getRemoteById(simulationId);
+      if (remote) {
+        saveLocal(remote);
+        return { snapshot: remote, mode: 'supabase' };
+      }
+    } catch {
+      message = 'Supabase ühendus ebaõnnestus, kasutatakse kohalikku režiimi';
+    }
+  }
+
+  return {
+    snapshot: getLocalById(simulationId),
+    mode: 'local',
+    message,
+  };
 }
 
 export function subscribeToSimulation(

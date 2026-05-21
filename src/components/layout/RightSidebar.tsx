@@ -27,8 +27,11 @@ interface Props {
   onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
   activatedPreparedInjectIds: string[];
   onActivatePreparedInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onActivatePreparedInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onActivateOverviewInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
+  onActivateOverviewInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onApplyPreparedEscalation?: (inject: PreparedScenarioInject, incidentId: string) => void;
+  canActivateAllGroups?: boolean;
   onQuickOverviewEscalation?: (incidentId: string, action: OverviewEscalationAction) => void;
   onOverviewOfficerInjured?: (incidentId: string, officerId: string) => void;
   onOverviewCloseIncident?: (incidentId: string) => void;
@@ -47,8 +50,11 @@ export const RightSidebar: React.FC<Props> = ({
   onOfficerDropToIncident,
   activatedPreparedInjectIds,
   onActivatePreparedInject,
+  onActivatePreparedInjectForAllGroups,
   onActivateOverviewInject,
+  onActivateOverviewInjectForAllGroups,
   onApplyPreparedEscalation,
+  canActivateAllGroups = false,
   onQuickOverviewEscalation,
   onOverviewOfficerInjured,
   onOverviewCloseIncident,
@@ -144,6 +150,8 @@ export const RightSidebar: React.FC<Props> = ({
                   decisionLog={decisionLog}
                   activatedInjectIds={activatedPreparedInjectIds}
                   onActivateInject={(inject, buildingId) => onActivateOverviewInject?.(inject, buildingId)}
+                  onActivateInjectForAllGroups={(inject, buildingId) => onActivateOverviewInjectForAllGroups?.(inject, buildingId)}
+                  canActivateAllGroups={canActivateAllGroups}
                   onOpenEscalation={onEscalate}
                   onQuickEscalation={(incidentId, action) => onQuickOverviewEscalation?.(incidentId, action)}
                   onMarkOfficerInjured={(incidentId, officerId) => onOverviewOfficerInjured?.(incidentId, officerId)}
@@ -154,6 +162,8 @@ export const RightSidebar: React.FC<Props> = ({
                   incidents={incidents}
                   activatedInjectIds={activatedPreparedInjectIds}
                   onActivateInject={(inject, buildingId) => onActivatePreparedInject?.(inject, buildingId)}
+                  onActivateInjectForAllGroups={(inject, buildingId) => onActivatePreparedInjectForAllGroups?.(inject, buildingId)}
+                  canActivateAllGroups={canActivateAllGroups}
                   onApplyEscalation={(inject, incidentId) => onApplyPreparedEscalation?.(inject, incidentId)}
                 />
                 <button onClick={onCreateIncident} style={createIncidentButtonStyle}>
