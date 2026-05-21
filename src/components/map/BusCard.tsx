@@ -1,6 +1,7 @@
 import React from 'react';
 import { EscortBus, Officer } from '../../models';
 import { getBusOfficers } from '../../lib/calculations';
+import { OfficerMarker } from '../officers/OfficerMarker';
 
 interface Props {
   bus: EscortBus;
@@ -9,9 +10,10 @@ interface Props {
   selected: boolean;
   onClick: () => void;
   onOfficerDrop?: (officerId: string) => void;
+  onSelectOfficer?: (officerId: string) => void;
 }
 
-export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onClick, onOfficerDrop }) => {
+export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onClick, onOfficerDrop, onSelectOfficer }) => {
   const assigned = getBusOfficers(bus, officers);
   const escortQualified = assigned.filter((officer) => officer.hasEscortPermission).length;
   const hasWarning = assigned.length > 0 && escortQualified < bus.minimumEscortQualified;
@@ -43,20 +45,13 @@ export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onCli
       {assigned.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 7 }}>
           {assigned.map((officer) => (
-            <span
+            <OfficerMarker
               key={officer.id}
-              draggable
-              onDragStart={(event) => {
-                event.dataTransfer.setData('text/plain', officer.id);
-                event.dataTransfer.effectAllowed = 'move';
-              }}
-              className="officer-chip officer-chip--escort"
-            >
-              {officer.name}
-              <span className={`role-badge ${officer.role === 'vanemvalvur' ? 'role-badge--lead' : 'role-badge--guard'}`}>
-                {officer.role === 'vanemvalvur' ? 'VV' : 'V'}
-              </span>
-            </span>
+              officer={officer}
+              compact
+              title={`${officer.name} | Saatmisel: ${bus.name}`}
+              onClick={() => onSelectOfficer?.(officer.id)}
+            />
           ))}
         </div>
       )}

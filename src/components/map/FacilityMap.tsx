@@ -16,6 +16,7 @@ interface Props {
   onCreateIncident?: (buildingId: string) => void;
   onOfficerDropToBuilding?: (officerId: string, buildingId: string) => void;
   onOfficerDropToBus?: (officerId: string, busId: string) => void;
+  onSelectOfficer?: (officerId: string) => void;
 }
 
 export const FacilityMap: React.FC<Props> = ({
@@ -31,6 +32,7 @@ export const FacilityMap: React.FC<Props> = ({
   onCreateIncident,
   onOfficerDropToBuilding,
   onOfficerDropToBus,
+  onSelectOfficer,
 }) => (
   <div style={mapShellStyle} onClick={(event) => {
     if (event.target === event.currentTarget) {
@@ -59,6 +61,7 @@ export const FacilityMap: React.FC<Props> = ({
           isFacilitator={isFacilitator}
           onCreateIncident={() => onCreateIncident?.(building.id)}
           onOfficerDrop={(officerId) => onOfficerDropToBuilding?.(officerId, building.id)}
+          onSelectOfficer={onSelectOfficer}
         />
       ))}
 
@@ -74,6 +77,7 @@ export const FacilityMap: React.FC<Props> = ({
             onSelectBuilding(null);
           }}
           onOfficerDrop={(officerId) => onOfficerDropToBus?.(officerId, bus.id)}
+          onSelectOfficer={onSelectOfficer}
         />
       ))}
     </div>

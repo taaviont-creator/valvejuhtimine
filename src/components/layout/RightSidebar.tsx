@@ -25,6 +25,7 @@ interface Props {
   onEscalate: (incidentId: string) => void;
   onCloseIncident: (incidentId: string) => void;
   onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
+  onSelectOfficer?: (officerId: string) => void;
   activatedPreparedInjectIds: string[];
   onActivatePreparedInject?: (inject: PreparedScenarioInject, buildingId: string) => void;
   onActivatePreparedInjectForAllGroups?: (inject: PreparedScenarioInject, buildingId: string) => void;
@@ -49,6 +50,7 @@ export const RightSidebar: React.FC<Props> = ({
   onEscalate,
   onCloseIncident,
   onOfficerDropToIncident,
+  onSelectOfficer,
   activatedPreparedInjectIds,
   onActivatePreparedInject,
   onActivatePreparedInjectForAllGroups,
@@ -96,6 +98,7 @@ export const RightSidebar: React.FC<Props> = ({
                   buildingName={buildings.find((building) => building.id === incident.buildingId)?.name ?? ''}
                   isFacilitator={false}
                   onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
+                  onSelectOfficer={onSelectOfficer}
                 />
               ))
             )}
@@ -185,6 +188,7 @@ export const RightSidebar: React.FC<Props> = ({
                 onEscalate={() => onEscalate(incident.id)}
                 onClose={() => closeIncident(incident)}
                 onOfficerDrop={(officerId) => onOfficerDropToIncident?.(officerId, incident.id)}
+                onSelectOfficer={onSelectOfficer}
               />
             ))}
             {closedIncidents.length > 0 && (
@@ -226,7 +230,9 @@ const StudentSection: React.FC<{ title: string; count: number; prominent?: boole
 );
 
 const sidebarStyle: React.CSSProperties = {
-  width: 280,
+  width: '100%',
+  height: '100%',
+  minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
   background: 'var(--bg-panel)',
@@ -318,6 +324,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 
 const contentStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: 'auto',
   padding: 10,
   display: 'flex',
@@ -327,6 +334,7 @@ const contentStyle: React.CSSProperties = {
 
 const studentContentStyle: React.CSSProperties = {
   flex: 1,
+  minHeight: 0,
   overflowY: 'auto',
   padding: 10,
   display: 'flex',

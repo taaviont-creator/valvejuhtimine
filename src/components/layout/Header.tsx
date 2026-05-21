@@ -96,8 +96,9 @@ const headerStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border)',
   display: 'flex',
   alignItems: 'center',
-  padding: '0 14px',
-  gap: 12,
+  flexWrap: 'wrap',
+  padding: '8px 14px',
+  gap: 10,
   flexShrink: 0,
 };
 
@@ -180,7 +181,8 @@ const accessWarningStyle: React.CSSProperties = {
 };
 
 const joinLinkStyle: React.CSSProperties = {
-  width: 285,
+  width: 250,
+  maxWidth: '28vw',
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',

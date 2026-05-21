@@ -1,15 +1,16 @@
 import React from 'react';
 import { Building, EscortBus, Incident, Officer } from '../../models';
+import { OfficerMarker, officerStatusLabels } from './OfficerMarker';
 
 type DestinationType = 'building' | 'incident' | 'bus' | 'pool';
 
 const statusLabels: Record<Officer['status'], string> = {
-  available: 'vaba',
-  in_building: 'üksuses',
-  on_incident: 'sündmusel',
-  on_escort: 'saatmisel',
-  busy: 'hõivatud',
-  unavailable: 'mängust väljas',
+  available: 'Vaba',
+  in_building: 'Vaba',
+  on_incident: 'Sündmusel',
+  on_escort: 'Saatmisel',
+  busy: 'Hõivatud',
+  unavailable: 'Mängust väljas',
 };
 
 const reassignmentMessage = 'Ametnik on juba hõivatud. Kas vabastada ta praeguselt ülesandelt ja suunata uude kohta?';
@@ -47,6 +48,11 @@ export const OfficerDetailPanel: React.FC<Props> = ({
     incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
     buildings.find((building) => building.id === officer.currentBuildingId)?.name ??
     'Asukoht puudub';
+  const currentAssignment =
+    incidents.find((incident) => incident.id === officer.currentIncidentId)?.title ??
+    buses.find((bus) => bus.id === officer.currentBusId)?.name ??
+    (officer.status === 'busy' ? 'Hõivatud' : 'Puudub');
+  const unavailable = officer.status === 'unavailable';
   const isOccupied = Boolean(
     officer.currentIncidentId ||
       officer.currentBusId ||
@@ -89,33 +95,37 @@ export const OfficerDetailPanel: React.FC<Props> = ({
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ ...nameStyle, color: officer.gender === 'male' ? 'var(--cyan)' : '#ff99cc' }}>{officer.name}</div>
-          <div style={metaStyle}>{officer.gender === 'male' ? 'Mees' : 'Naine'} · {officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}</div>
+          <div style={panelTitleStyle}>Ametniku info</div>
+          <div style={{ marginTop: 6 }}>
+            <OfficerMarker officer={officer} selected draggable={false} />
+          </div>
         </div>
         <button onClick={onClose} style={closeStyle}>x</button>
       </div>
 
-      <div style={currentLocationStyle}>
-        <span>{statusLabels[officer.status]}</span>
-        <strong>{currentLocation}</strong>
+      <div style={infoGridStyle}>
+        <InfoRow label="Ametnik" value={officer.name} />
+        <InfoRow label="Roll" value={officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'} />
+        <InfoRow label="Staatus" value={statusLabels[officer.status] ?? officerStatusLabels[officer.status]} />
+        <InfoRow label="Asukoht" value={currentLocation} />
+        <InfoRow label="Saateõigus" value={officer.hasEscortPermission ? 'Jah' : 'Ei'} />
+        <InfoRow label="Elektrišokirelva õigus" value={officer.hasTaserPermission ? 'Jah' : 'Ei'} />
+        <InfoRow label="Praegune ülesanne" value={currentAssignment} />
       </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <RightBadge label="Saateõigus" active={officer.hasEscortPermission} />
-        <RightBadge label="EŠR õigus" active={officer.hasTaserPermission} />
-      </div>
+      {unavailable && <div style={unavailableNoticeStyle}>Ametnik on mängust väljas ja teda ei saa suunata.</div>}
 
       <div>
-        <div style={sectionTitleStyle}>Sihtkoha tüüp</div>
+        <div style={sectionTitleStyle}>Suuna ametnik</div>
         <div style={destinationTabsStyle}>
           {(['building', 'incident', 'bus', 'pool'] as DestinationType[]).map((type) => (
             <button
               key={type}
               onClick={() => setDestinationType(type)}
-              disabled={destinationCount[type] === 0}
-              style={destinationTabStyle(destinationType === type, destinationCount[type] === 0)}
+              disabled={destinationCount[type] === 0 || unavailable}
+              style={destinationTabStyle(destinationType === type, destinationCount[type] === 0 || unavailable)}
             >
-              {type === 'building' ? 'Üksus / hoone' : type === 'incident' ? 'Sündmus' : type === 'bus' ? 'Saatebuss' : 'Valves'}
+              {type === 'building' ? 'Suuna üksusesse' : type === 'incident' ? 'Määra sündmusele' : type === 'bus' ? 'Määra saatebussile' : 'Valves olevad'}
             </button>
           ))}
         </div>
@@ -128,7 +138,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
               <ActionBtn
                 key={building.id}
                 label={building.name}
-                disabled={officer.currentBuildingId === building.id && !officer.currentIncidentId && !officer.currentBusId}
+                disabled={unavailable || (officer.currentBuildingId === building.id && !officer.currentIncidentId && !officer.currentBusId)}
                 onClick={() => moveToBuilding(building.id)}
                 accent="var(--cyan)"
               />
@@ -147,7 +157,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
                 <ActionBtn
                   key={incident.id}
                   label={`${incident.title} (vajalik ${incident.requiredOfficers})`}
-                  disabled={officer.currentIncidentId === incident.id}
+                  disabled={unavailable || officer.currentIncidentId === incident.id}
                   onClick={() => assignToIncident(incident.id)}
                   accent={incident.status === 'escalated' ? 'var(--red)' : 'var(--amber)'}
                   actionLabel="Määra sündmusele"
@@ -165,7 +175,7 @@ export const OfficerDetailPanel: React.FC<Props> = ({
               <ActionBtn
                 key={bus.id}
                 label={bus.name}
-                disabled={officer.currentBusId === bus.id}
+                disabled={unavailable || officer.currentBusId === bus.id}
                 onClick={() => assignToBus(bus.id)}
                 accent="var(--amber)"
                 actionLabel="Määra saatebussile"
@@ -179,29 +189,30 @@ export const OfficerDetailPanel: React.FC<Props> = ({
         <Section title="Valves olevad ametnikud">
           <ActionBtn
             label={pool.name}
-            disabled={officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId}
+            disabled={unavailable || (officer.currentBuildingId === pool.id && !officer.currentIncidentId && !officer.currentBusId)}
             onClick={() => moveToBuilding(pool.id)}
             accent="var(--green)"
-            actionLabel="Suuna"
+            actionLabel="Suuna valves olevate ametnike hulka"
           />
         </Section>
       )}
 
-      <button onClick={releaseToPool} style={releaseStyle}>Vabasta / suuna tagasi</button>
+      <button disabled={unavailable} onClick={releaseToPool} style={{ ...releaseStyle, opacity: unavailable ? 0.45 : 1 }}>Vabasta / suuna tagasi</button>
     </div>
   );
 };
+
+const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div style={infoRowStyle}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+  </div>
+);
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div>
     <div style={sectionTitleStyle}>{title}</div>
     {children}
-  </div>
-);
-
-const RightBadge: React.FC<{ label: string; active: boolean }> = ({ label, active }) => (
-  <div style={{ ...badgeStyle, color: active ? 'var(--green)' : 'var(--text-muted)', borderColor: active ? 'var(--green-dim)' : 'var(--border)' }}>
-    {active ? 'jah' : 'ei'} {label}
   </div>
 );
 
@@ -242,18 +253,11 @@ const panelStyle: React.CSSProperties = {
   gap: 12,
 };
 
-const nameStyle: React.CSSProperties = {
+const panelTitleStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 22,
+  fontSize: 20,
   fontWeight: 700,
-};
-
-const metaStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
-  color: 'var(--text-muted)',
-  letterSpacing: 1,
-  textTransform: 'uppercase',
+  color: 'var(--text-primary)',
 };
 
 const closeStyle: React.CSSProperties = {
@@ -264,18 +268,32 @@ const closeStyle: React.CSSProperties = {
   padding: '0 4px',
 };
 
-const currentLocationStyle: React.CSSProperties = {
+const infoGridStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+};
+
+const infoRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '72px 1fr',
+  gridTemplateColumns: '118px 1fr',
   gap: 7,
   alignItems: 'center',
-  padding: '7px 8px',
+  padding: '6px 8px',
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   fontSize: 11,
   color: 'var(--text-secondary)',
-  textTransform: 'uppercase',
+};
+
+const unavailableNoticeStyle: React.CSSProperties = {
+  padding: '7px 8px',
+  background: 'rgba(185,67,77,0.08)',
+  border: '1px solid rgba(185,67,77,0.28)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--red)',
+  fontSize: 11,
 };
 
 const sectionTitleStyle: React.CSSProperties = {
@@ -322,16 +340,6 @@ const actionSuffixStyle: React.CSSProperties = {
   fontSize: 8,
   color: 'inherit',
   opacity: 0.8,
-  textTransform: 'uppercase',
-};
-
-const badgeStyle: React.CSSProperties = {
-  padding: '3px 7px',
-  borderRadius: 'var(--radius-sm)',
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 10,
   textTransform: 'uppercase',
 };
 

@@ -22,7 +22,7 @@ export const SharingToolsPanel: React.FC<Props> = ({
   onResetSimulation,
   onResetGroup,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [copiedKey, setCopiedKey] = useState<CopyKey | null>(null);
   const teacherCode = classroomExercise?.teacherCode ?? simulation.teacherCode ?? simulation.joinCode;
   const studentCode = simulation.studentCode ?? simulation.joinCode;
@@ -206,7 +206,7 @@ const warningStyle: React.CSSProperties = {
 
 const singleGridStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: 8,
 };
 

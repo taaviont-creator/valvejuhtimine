@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building, Incident, Officer } from '../../models';
 import { getBuildingOfficerCount, getIncidentOfficers } from '../../lib/calculations';
+import { OfficerMarker } from '../officers/OfficerMarker';
 
 interface Props {
   building: Building;
@@ -11,6 +12,7 @@ interface Props {
   isFacilitator: boolean;
   onCreateIncident?: () => void;
   onOfficerDrop?: (officerId: string) => void;
+  onSelectOfficer?: (officerId: string) => void;
 }
 
 export const BuildingCard: React.FC<Props> = ({
@@ -22,6 +24,7 @@ export const BuildingCard: React.FC<Props> = ({
   isFacilitator,
   onCreateIncident,
   onOfficerDrop,
+  onSelectOfficer,
 }) => {
   const activeIncidents = building.isResourcePool
     ? []
@@ -63,6 +66,9 @@ export const BuildingCard: React.FC<Props> = ({
     ? 'Alla miinimumi'
     : 'Korras';
   const freeSectionTitle = building.isResourcePool ? 'Vaba' : 'Üksuses vabad';
+  const visibleIncidents = activeIncidents.slice(0, 2);
+  const visibleLocalOfficers = localOfficers.slice(0, building.isResourcePool ? 10 : 6);
+  const visibleUnavailableOfficers = unavailableOfficers.slice(0, 4);
   const dropOfficer = (event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -99,8 +105,9 @@ export const BuildingCard: React.FC<Props> = ({
 
       {activeIncidents.length > 0 && (
         <div style={incidentSectionStyle}>
-          {activeIncidents.map((incident) => {
+          {visibleIncidents.map((incident) => {
             const assigned = getIncidentOfficers(incident, officers);
+            const visibleAssigned = assigned.slice(0, 5);
             return (
               <div key={incident.id} style={incidentGroupStyle}>
                 <div style={sectionLabelStyle}>Sündmusel: {incident.title}</div>
@@ -108,14 +115,24 @@ export const BuildingCard: React.FC<Props> = ({
                   <div style={emptyGroupStyle}>Ametnikke pole määratud</div>
                 ) : (
                   <div style={chipWrapStyle}>
-                    {assigned.map((officer) => (
-                      <OfficerMapChip key={officer.id} officer={officer} tone="incident" incidentTitle={incident.title} />
+                    {visibleAssigned.map((officer) => (
+                      <OfficerMarker
+                        key={officer.id}
+                        officer={officer}
+                        compact
+                        title={`${officer.name} | Sündmusel: ${incident.title}`}
+                        onClick={() => onSelectOfficer?.(officer.id)}
+                      />
                     ))}
+                    {assigned.length > visibleAssigned.length && <span style={moreTextStyle}>+{assigned.length - visibleAssigned.length}</span>}
                   </div>
                 )}
               </div>
             );
           })}
+          {activeIncidents.length > visibleIncidents.length && (
+            <div style={moreTextStyle}>Veel sündmusi: {activeIncidents.length - visibleIncidents.length}</div>
+          )}
         </div>
       )}
 
@@ -123,9 +140,10 @@ export const BuildingCard: React.FC<Props> = ({
         <div style={freeOfficerSectionStyle}>
           <div style={sectionLabelStyle}>{freeSectionTitle}</div>
           <div style={chipWrapStyle}>
-            {localOfficers.map((officer) => (
-              <OfficerMapChip key={officer.id} officer={officer} tone="free" />
+            {visibleLocalOfficers.map((officer) => (
+              <OfficerMarker key={officer.id} officer={officer} compact onClick={() => onSelectOfficer?.(officer.id)} />
             ))}
+            {localOfficers.length > visibleLocalOfficers.length && <span style={moreTextStyle}>+{localOfficers.length - visibleLocalOfficers.length}</span>}
           </div>
         </div>
       )}
@@ -134,9 +152,10 @@ export const BuildingCard: React.FC<Props> = ({
         <div style={unavailableOfficerSectionStyle}>
           <div style={sectionLabelStyle}>Mängust väljas</div>
           <div style={chipWrapStyle}>
-            {unavailableOfficers.map((officer) => (
-              <OfficerMapChip key={officer.id} officer={officer} tone="unavailable" />
+            {visibleUnavailableOfficers.map((officer) => (
+              <OfficerMarker key={officer.id} officer={officer} compact onClick={() => onSelectOfficer?.(officer.id)} />
             ))}
+            {unavailableOfficers.length > visibleUnavailableOfficers.length && <span style={moreTextStyle}>+{unavailableOfficers.length - visibleUnavailableOfficers.length}</span>}
           </div>
         </div>
       )}
@@ -156,30 +175,14 @@ export const BuildingCard: React.FC<Props> = ({
   );
 };
 
-const OfficerMapChip: React.FC<{ officer: Officer; tone: 'free' | 'incident' | 'unavailable'; incidentTitle?: string }> = ({ officer, tone, incidentTitle }) => {
-  const isLead = officer.role === 'vanemvalvur';
-  return (
-    <span
-      draggable
-      onDragStart={(event) => {
-        event.dataTransfer.setData('text/plain', officer.id);
-        event.dataTransfer.effectAllowed = 'move';
-      }}
-      title={`${officer.name} | ${isLead ? 'Vanemvalvur' : 'Valvur'}${incidentTitle ? ` | ${incidentTitle}` : ''}`}
-      className={`officer-chip officer-chip--${tone}`}
-    >
-      {officer.name}
-      <span className={`role-badge ${isLead ? 'role-badge--lead' : 'role-badge--guard'}`}>{isLead ? 'VV' : 'V'}</span>
-    </span>
-  );
-};
-
 const cardStyle = (building: Building, borderColor: string, selected: boolean, critical: boolean, hasIncident: boolean, belowMin: boolean): React.CSSProperties => ({
   position: 'absolute',
   left: building.x,
   top: building.y,
   width: building.isResourcePool ? 240 : 200,
   minHeight: 112,
+  maxHeight: building.isResourcePool ? 230 : 250,
+  overflowY: 'auto',
   background: critical
     ? 'rgba(185,67,77,0.08)'
     : hasIncident
@@ -303,6 +306,9 @@ const sectionLabelStyle: React.CSSProperties = {
   fontSize: 8.5,
   letterSpacing: 0.7,
   textTransform: 'uppercase',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 };
 
 const chipWrapStyle: React.CSSProperties = {
@@ -314,6 +320,13 @@ const chipWrapStyle: React.CSSProperties = {
 const emptyGroupStyle: React.CSSProperties = {
   color: 'var(--red)',
   fontSize: 10,
+};
+
+const moreTextStyle: React.CSSProperties = {
+  alignSelf: 'center',
+  color: 'var(--text-muted)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
 };
 
 const createButtonStyle: React.CSSProperties = {

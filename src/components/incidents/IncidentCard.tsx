@@ -1,6 +1,7 @@
 import React from 'react';
 import { Incident, Officer } from '../../models';
 import { getIncidentOfficers } from '../../lib/calculations';
+import { OfficerMarker } from '../officers/OfficerMarker';
 
 const severityColors: Record<string, string> = {
   low: 'var(--green)',
@@ -31,6 +32,7 @@ interface Props {
   onEscalate?: () => void;
   onClose?: () => void;
   onOfficerDrop?: (officerId: string) => void;
+  onSelectOfficer?: (officerId: string) => void;
 }
 
 export const IncidentCard: React.FC<Props> = ({
@@ -41,6 +43,7 @@ export const IncidentCard: React.FC<Props> = ({
   onEscalate,
   onClose,
   onOfficerDrop,
+  onSelectOfficer,
 }) => {
   const [expanded, setExpanded] = React.useState(false);
   const assigned = getIncidentOfficers(incident, officers);
@@ -89,21 +92,13 @@ export const IncidentCard: React.FC<Props> = ({
           ) : (
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
               {assigned.map((officer) => (
-                <span
+                <OfficerMarker
                   key={officer.id}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('text/plain', officer.id);
-                    event.dataTransfer.effectAllowed = 'move';
-                  }}
-                  title={officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}
-                  className="officer-chip officer-chip--incident"
-                >
-                  {officer.name}
-                  <span className={`role-badge ${officer.role === 'vanemvalvur' ? 'role-badge--lead' : 'role-badge--guard'}`}>
-                    {officer.role === 'vanemvalvur' ? 'VV' : 'V'}
-                  </span>
-                </span>
+                  officer={officer}
+                  compact
+                  title={`${officer.name} | Sündmusel: ${incident.title}`}
+                  onClick={() => onSelectOfficer?.(officer.id)}
+                />
               ))}
             </div>
           )}

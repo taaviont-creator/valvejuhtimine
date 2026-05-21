@@ -275,7 +275,9 @@ const SectionHeader: React.FC<{ title: string; count?: number }> = ({ title, cou
 );
 
 const sidebarStyle: React.CSSProperties = {
-  width: 250,
+  width: '100%',
+  height: '100%',
+  minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
   background: 'var(--bg-panel)',

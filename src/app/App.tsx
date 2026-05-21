@@ -216,7 +216,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={appShellStyle}>
       <Header
         role={state.role}
         simulation={state.simulation}
@@ -226,7 +226,6 @@ export const App: React.FC = () => {
         syncMessage={state.syncMessage}
         onBack={sim.leaveSimulation}
         onStart={isFacilitator ? sim.startSimulation : undefined}
-        onReset={isFacilitator && !state.classroomExercise ? resetCurrentSimulation : undefined}
       />
 
       {isFacilitator && (
@@ -247,7 +246,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={dashboardStyle}>
         <LeftSidebar
           role={state.role}
           simulation={state.simulation}
@@ -266,7 +265,7 @@ export const App: React.FC = () => {
           onSetSetupMode={sim.setSetupMode}
         />
 
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div style={mapColumnStyle}>
           <FacilityMap
             buildings={state.buildings}
             officers={state.officers}
@@ -280,6 +279,7 @@ export const App: React.FC = () => {
             onCreateIncident={(buildingId) => setIncidentFormBuildingId(buildingId)}
             onOfficerDropToBuilding={moveDroppedOfficerToBuilding}
             onOfficerDropToBus={assignDroppedOfficerToBus}
+            onSelectOfficer={setSelectedOfficerId}
           />
         </div>
 
@@ -297,6 +297,7 @@ export const App: React.FC = () => {
           onEscalate={(id) => setEscalateIncidentId(id)}
           onCloseIncident={sim.closeIncident}
           onOfficerDropToIncident={assignDroppedOfficerToIncident}
+          onSelectOfficer={setSelectedOfficerId}
           activatedPreparedInjectIds={activatedPreparedInjectIds}
           onActivatePreparedInject={activatePreparedInject}
           onActivatePreparedInjectForAllGroups={activatePreparedInjectForAllGroups}
@@ -357,6 +358,34 @@ export const App: React.FC = () => {
       })()}
     </div>
   );
+};
+
+const appShellStyle: React.CSSProperties = {
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  background: 'var(--bg-base)',
+};
+
+const dashboardStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '240px minmax(0, 1fr) 290px',
+  gap: 10,
+  padding: 10,
+  minHeight: 660,
+  height: 'calc(100vh - 74px)',
+  maxHeight: 820,
+  overflow: 'visible',
+};
+
+const mapColumnStyle: React.CSSProperties = {
+  minWidth: 0,
+  minHeight: 0,
+  position: 'relative',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  overflow: 'hidden',
+  background: 'var(--bg-base)',
 };
 
 export default App;
