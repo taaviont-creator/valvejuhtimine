@@ -3,15 +3,8 @@ import { Building, Incident, Officer } from '../../models';
 import { getBuildingOfficerCount, getIncidentOfficers } from '../../lib/calculations';
 import { OfficerMarker } from '../officers/OfficerMarker';
 
-type MapPosition = {
-  x: number;
-  y: number;
-  width?: number;
-};
-
 interface Props {
   building: Building;
-  mapPosition?: MapPosition;
   officers: Officer[];
   incidents: Incident[];
   selected: boolean;
@@ -19,12 +12,12 @@ interface Props {
   isFacilitator: boolean;
   onCreateIncident?: () => void;
   onOfficerDrop?: (officerId: string) => void;
+  onOfficerDropToIncident?: (officerId: string, incidentId: string) => void;
   onSelectOfficer?: (officerId: string) => void;
 }
 
 export const BuildingCard: React.FC<Props> = ({
   building,
-  mapPosition,
   officers,
   incidents,
   selected,
@@ -32,6 +25,7 @@ export const BuildingCard: React.FC<Props> = ({
   isFacilitator,
   onCreateIncident,
   onOfficerDrop,
+  onOfficerDropToIncident,
   onSelectOfficer,
 }) => {
   const activeIncidents = building.isResourcePool
@@ -74,7 +68,7 @@ export const BuildingCard: React.FC<Props> = ({
     ? 'Alla miinimumi'
     : 'Korras';
   const freeSectionTitle = building.isResourcePool ? 'Vaba' : 'Üksuses vabad';
-  const visibleIncidents = activeIncidents.slice(0, 2);
+  const visibleIncidents = activeIncidents;
   const visibleLocalOfficers = localOfficers.slice(0, building.isResourcePool ? 10 : 6);
   const visibleUnavailableOfficers = unavailableOfficers.slice(0, 4);
   const dropOfficer = (event: React.DragEvent) => {
@@ -83,13 +77,19 @@ export const BuildingCard: React.FC<Props> = ({
     const officerId = event.dataTransfer.getData('text/plain');
     if (officerId) onOfficerDrop?.(officerId);
   };
+  const dropOfficerToIncident = (event: React.DragEvent, incidentId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const officerId = event.dataTransfer.getData('text/plain');
+    if (officerId) onOfficerDropToIncident?.(officerId, incidentId);
+  };
 
   return (
     <div
       onClick={onClick}
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropOfficer}
-      style={cardStyle(building, mapPosition, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}
+      style={cardStyle(building, borderColor, selected, critical, activeIncidents.length > 0, belowMin)}
     >
       <div style={roofStyle(building, critical, activeIncidents.length > 0, belowMin)} />
       <div style={facadePatternStyle} />
@@ -126,9 +126,34 @@ export const BuildingCard: React.FC<Props> = ({
           {visibleIncidents.map((incident) => {
             const assigned = getIncidentOfficers(incident, officers);
             const visibleAssigned = assigned.slice(0, 5);
+            const hasTaserOfficer = assigned.some((officer) => officer.hasTaserPermission);
+            const missingTaser = incident.requiresTaserPermission && !hasTaserOfficer;
+            const belowIncidentMinimum = assigned.length < incident.requiredOfficers;
             return (
-              <div key={incident.id} style={incidentGroupStyle}>
-                <div style={sectionLabelStyle}>Sündmusel: {incident.title}</div>
+              <div
+                key={incident.id}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onDrop={(event) => dropOfficerToIncident(event, incident.id)}
+                style={incidentGroupStyle(missingTaser || belowIncidentMinimum, incident.status === 'escalated')}
+              >
+                <div style={incidentDropHeaderStyle}>
+                  <span style={incidentDropLabelStyle}>Sündmus</span>
+                  <span style={incidentDropActionStyle}>Lohista ametnik siia sündmusele</span>
+                </div>
+                <div style={incidentTitleStyle}>{incident.title}</div>
+                <div style={incidentRequirementStyle}>
+                  Määratud {assigned.length} / Vajalik {incident.requiredOfficers}
+                  {incident.requiresTaserPermission && <span> · EŠR: vajalik vähemalt 1</span>}
+                </div>
+                {(belowIncidentMinimum || missingTaser) && (
+                  <div style={incidentWarningStyle}>
+                    {belowIncidentMinimum && <span>Puudu ametnikke</span>}
+                    {missingTaser && <span>Sündmus nõuab vähemalt ühte EŠR õigusega ametnikku</span>}
+                  </div>
+                )}
                 {assigned.length === 0 ? (
                   <div style={emptyGroupStyle}>Ametnikke pole määratud</div>
                 ) : (
@@ -195,35 +220,34 @@ export const BuildingCard: React.FC<Props> = ({
 
 const cardStyle = (
   building: Building,
-  mapPosition: MapPosition | undefined,
   borderColor: string,
   selected: boolean,
   critical: boolean,
   hasIncident: boolean,
   belowMin: boolean
 ): React.CSSProperties => ({
-  position: mapPosition ? 'absolute' : 'relative',
-  left: mapPosition?.x,
-  top: mapPosition?.y,
-  width: mapPosition?.width ?? '100%',
+  position: 'relative',
+  width: '100%',
   minWidth: 0,
-  minHeight: 112,
-  maxHeight: building.isResourcePool ? 260 : 270,
+  minHeight: building.isResourcePool ? 118 : 126,
+  maxHeight: building.isResourcePool ? 190 : 220,
   overflowY: 'auto',
   background: critical
-    ? 'linear-gradient(180deg, rgba(185,67,77,0.13), rgba(255,255,255,0.94))'
+    ? 'linear-gradient(180deg, rgba(185,67,77,0.14), rgba(255,255,255,0.96))'
     : hasIncident
-    ? 'linear-gradient(180deg, rgba(34,121,157,0.13), rgba(255,255,255,0.95))'
+    ? 'linear-gradient(180deg, rgba(34,121,157,0.13), rgba(255,255,255,0.96))'
     : belowMin
-    ? 'linear-gradient(180deg, rgba(166,111,31,0.13), rgba(255,255,255,0.95))'
+    ? 'linear-gradient(180deg, rgba(166,111,31,0.13), rgba(255,255,255,0.96))'
     : building.isResourcePool
-    ? 'linear-gradient(180deg, rgba(39,122,87,0.13), rgba(255,255,255,0.96))'
-    : 'linear-gradient(180deg, #ffffff, #f6f8f5)',
+    ? 'linear-gradient(180deg, rgba(39,122,87,0.13), rgba(255,255,255,0.97))'
+    : 'linear-gradient(180deg, #fbfcfa, #f0f4ed)',
   border: `1px solid ${borderColor}`,
-  borderRadius: 7,
-  padding: hasIncident ? '26px 13px 12px' : '16px 13px 12px',
+  borderRadius: 5,
+  padding: hasIncident ? '22px 9px 9px' : '12px 9px 9px',
   cursor: 'pointer',
-  boxShadow: selected ? '0 0 0 3px rgba(34,121,157,0.16), 0 8px 18px rgba(31,45,61,0.13)' : '0 6px 14px rgba(31,45,61,0.10)',
+  boxShadow: selected
+    ? '0 0 0 3px rgba(34,121,157,0.16), 0 6px 12px rgba(31,45,61,0.12)'
+    : '0 3px 8px rgba(31,45,61,0.10), inset 0 -8px 0 rgba(80,101,122,0.04)',
   userSelect: 'none',
   zIndex: selected ? 6 : hasIncident ? 5 : 4,
 });
@@ -233,8 +257,8 @@ const roofStyle = (building: Building, critical: boolean, hasIncident: boolean, 
   left: -1,
   right: -1,
   top: -1,
-  height: 8,
-  borderRadius: '7px 7px 0 0',
+  height: 7,
+  borderRadius: '5px 5px 0 0',
   background: critical
     ? 'var(--red)'
     : hasIncident
@@ -248,24 +272,27 @@ const roofStyle = (building: Building, critical: boolean, hasIncident: boolean, 
 
 const facadePatternStyle: React.CSSProperties = {
   position: 'absolute',
-  inset: '8px 0 auto',
-  height: 24,
-  backgroundImage: 'linear-gradient(90deg, rgba(80,101,122,0.10) 1px, transparent 1px)',
-  backgroundSize: '18px 100%',
+  inset: '7px 0 auto',
+  height: 18,
+  backgroundImage: `
+    linear-gradient(90deg, rgba(80,101,122,0.10) 1px, transparent 1px),
+    linear-gradient(rgba(80,101,122,0.08) 1px, transparent 1px)
+  `,
+  backgroundSize: '16px 100%, 100% 9px',
   pointerEvents: 'none',
-  opacity: 0.5,
+  opacity: 0.55,
 };
 
 const incidentBadgeStyle = (escalated: boolean): React.CSSProperties => ({
   position: 'absolute',
   top: 5,
-  right: 8,
+  right: 7,
   background: escalated ? 'var(--red)' : 'var(--cyan)',
   color: '#fff',
-  fontSize: 10,
+  fontSize: 9,
   fontWeight: 700,
-  padding: '2px 7px',
-  borderRadius: 10,
+  padding: '2px 6px',
+  borderRadius: 8,
   fontFamily: 'var(--font-mono)',
   letterSpacing: 0.5,
   textTransform: 'uppercase',
@@ -275,19 +302,19 @@ const headerStyle: React.CSSProperties = {
   position: 'relative',
   display: 'flex',
   alignItems: 'flex-start',
-  gap: 8,
-  marginBottom: 8,
+  gap: 6,
+  marginBottom: 6,
 };
 
 const buildingGlyphStyle = (resourcePool?: boolean): React.CSSProperties => ({
-  width: 28,
-  height: 26,
+  width: 22,
+  height: 20,
   flexShrink: 0,
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: 3,
-  padding: 4,
-  borderRadius: 4,
+  gap: 2,
+  padding: 3,
+  borderRadius: 3,
   border: `1px solid ${resourcePool ? 'var(--green-dim)' : 'var(--border-bright)'}`,
   background: resourcePool ? 'rgba(39,122,87,0.10)' : 'rgba(80,101,122,0.08)',
   boxShadow: 'inset 0 -4px 0 rgba(80,101,122,0.08)',
@@ -300,10 +327,10 @@ const glyphWindowStyle: React.CSSProperties = {
 
 const buildingNameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 15,
+  fontSize: 12.5,
   fontWeight: 700,
-  letterSpacing: 0.2,
-  lineHeight: 1.25,
+  letterSpacing: 0,
+  lineHeight: 1.15,
   minWidth: 0,
 };
 
@@ -311,12 +338,16 @@ const countRowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginBottom: 5,
+  marginBottom: 4,
+  padding: '4px 6px',
+  border: '1px solid rgba(80,101,122,0.14)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'rgba(255,255,255,0.58)',
 };
 
 const countStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 22,
+  fontSize: 15,
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -329,7 +360,7 @@ const slashStyle: React.CSSProperties = {
 
 const minimumStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 9,
+  fontSize: 8,
   color: 'var(--text-muted)',
   textTransform: 'uppercase',
 };
@@ -338,6 +369,7 @@ const statusRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 5,
+  marginBottom: 5,
 };
 
 const dotStyle: React.CSSProperties = {
@@ -348,45 +380,98 @@ const dotStyle: React.CSSProperties = {
 
 const statusTextStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10.5,
+  fontSize: 8.5,
   letterSpacing: 0.5,
   textTransform: 'uppercase',
 };
 
 const incidentSectionStyle: React.CSSProperties = {
-  marginTop: 8,
+  marginTop: 6,
   display: 'flex',
   flexDirection: 'column',
-  gap: 5,
+  gap: 4,
 };
 
-const incidentGroupStyle: React.CSSProperties = {
-  padding: '7px 8px',
-  background: 'rgba(166,111,31,0.08)',
-  border: '1px solid rgba(166,111,31,0.28)',
-  borderLeft: '3px solid var(--amber-dim)',
+const incidentGroupStyle = (warning: boolean, escalated: boolean): React.CSSProperties => ({
+  position: 'relative',
+  zIndex: 3,
+  padding: '6px 7px',
+  background: warning ? 'rgba(185,67,77,0.08)' : 'rgba(166,111,31,0.08)',
+  border: `1px solid ${warning ? 'rgba(185,67,77,0.30)' : 'rgba(166,111,31,0.28)'}`,
+  borderLeft: `3px solid ${escalated || warning ? 'var(--red)' : 'var(--amber-dim)'}`,
   borderRadius: 'var(--radius-sm)',
+  cursor: 'copy',
+});
+
+const incidentDropHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 6,
+  alignItems: 'center',
+  marginBottom: 3,
+};
+
+const incidentDropLabelStyle: React.CSSProperties = {
+  color: 'var(--text-primary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8,
+  fontWeight: 800,
+  letterSpacing: 0.7,
+  textTransform: 'uppercase',
+};
+
+const incidentDropActionStyle: React.CSSProperties = {
+  color: 'var(--cyan)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 7.5,
+  fontWeight: 800,
+  letterSpacing: 0.5,
+  textTransform: 'uppercase',
+};
+
+const incidentTitleStyle: React.CSSProperties = {
+  color: 'var(--text-primary)',
+  fontSize: 10.5,
+  fontWeight: 800,
+  lineHeight: 1.2,
+};
+
+const incidentRequirementStyle: React.CSSProperties = {
+  marginTop: 3,
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8.5,
+};
+
+const incidentWarningStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  marginTop: 4,
+  color: 'var(--red)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 8.5,
 };
 
 const freeOfficerSectionStyle: React.CSSProperties = {
-  marginTop: 7,
-  paddingTop: 6,
+  marginTop: 6,
+  paddingTop: 5,
   borderTop: '1px solid var(--border)',
 };
 
 const unavailableOfficerSectionStyle: React.CSSProperties = {
-  marginTop: 7,
-  padding: '6px 7px',
+  marginTop: 6,
+  padding: '5px 6px',
   background: 'rgba(185,67,77,0.07)',
   border: '1px solid rgba(185,67,77,0.28)',
   borderRadius: 'var(--radius-sm)',
 };
 
 const sectionLabelStyle: React.CSSProperties = {
-  marginBottom: 4,
+  marginBottom: 3,
   color: 'var(--text-muted)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 8.5,
+  fontSize: 8,
   letterSpacing: 0.7,
   textTransform: 'uppercase',
   whiteSpace: 'nowrap',
@@ -397,30 +482,30 @@ const sectionLabelStyle: React.CSSProperties = {
 const chipWrapStyle: React.CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
-  gap: 4,
+  gap: 3,
 };
 
 const emptyGroupStyle: React.CSSProperties = {
   color: 'var(--red)',
-  fontSize: 10,
+  fontSize: 9.5,
 };
 
 const moreTextStyle: React.CSSProperties = {
   alignSelf: 'center',
   color: 'var(--text-muted)',
   fontFamily: 'var(--font-mono)',
-  fontSize: 9,
+  fontSize: 8.5,
 };
 
 const createButtonStyle: React.CSSProperties = {
-  marginTop: 8,
+  marginTop: 6,
   width: '100%',
-  padding: '5px 0',
+  padding: '4px 0',
   background: 'transparent',
   border: '1px solid var(--cyan-dim)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--cyan)',
-  fontSize: 11,
+  fontSize: 9.5,
   fontFamily: 'var(--font-mono)',
   letterSpacing: 0.5,
   textTransform: 'uppercase',

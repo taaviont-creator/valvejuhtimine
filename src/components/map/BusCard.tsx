@@ -3,16 +3,9 @@ import { EscortBus, Officer } from '../../models';
 import { getBusOfficers } from '../../lib/calculations';
 import { OfficerMarker } from '../officers/OfficerMarker';
 
-type MapPosition = {
-  x: number;
-  y: number;
-  width?: number;
-};
-
 interface Props {
   bus: EscortBus;
   index: number;
-  mapPosition?: MapPosition;
   officers: Officer[];
   selected: boolean;
   onClick: () => void;
@@ -20,7 +13,7 @@ interface Props {
   onSelectOfficer?: (officerId: string) => void;
 }
 
-export const BusCard: React.FC<Props> = ({ bus, index, mapPosition, officers, selected, onClick, onOfficerDrop, onSelectOfficer }) => {
+export const BusCard: React.FC<Props> = ({ bus, index, officers, selected, onClick, onOfficerDrop, onSelectOfficer }) => {
   const assigned = getBusOfficers(bus, officers);
   const escortQualified = assigned.filter((officer) => officer.hasEscortPermission).length;
   const hasWarning = assigned.length > 0 && escortQualified < bus.minimumEscortQualified;
@@ -34,7 +27,7 @@ export const BusCard: React.FC<Props> = ({ bus, index, mapPosition, officers, se
   };
 
   return (
-    <div onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={dropOfficer} style={cardStyle(index, mapPosition, selected, hasWarning, ready)}>
+    <div onClick={onClick} onDragOver={(event) => event.preventDefault()} onDrop={dropOfficer} style={cardStyle(index, selected, hasWarning, ready)}>
       <div style={busLaneStyle} />
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={busIconStyle} aria-hidden="true">
@@ -72,23 +65,20 @@ export const BusCard: React.FC<Props> = ({ bus, index, mapPosition, officers, se
 
 const cardStyle = (
   index: number,
-  mapPosition: MapPosition | undefined,
   selected: boolean,
   hasWarning: boolean,
   ready: boolean
 ): React.CSSProperties => ({
-  position: mapPosition ? 'absolute' : 'relative',
-  left: mapPosition?.x ?? (mapPosition ? undefined : 'auto'),
-  top: mapPosition?.y,
-  width: mapPosition?.width ?? '100%',
+  position: 'relative',
+  width: '100%',
   minWidth: 0,
-  minHeight: 94,
-  background: selected ? 'linear-gradient(180deg, #edf3f9, #ffffff)' : 'linear-gradient(180deg, #ffffff, #f5f7f4)',
+  minHeight: 88,
+  background: selected ? 'linear-gradient(180deg, #edf3f9, #ffffff)' : 'linear-gradient(180deg, #fbfcfa, #f1f4ef)',
   border: `1px solid ${hasWarning ? 'var(--amber)' : ready ? 'var(--green)' : selected ? 'var(--cyan-dim)' : 'var(--border)'}`,
-  borderRadius: 7,
-  padding: '14px 13px 12px',
+  borderRadius: 5,
+  padding: '13px 10px 9px',
   cursor: 'pointer',
-  boxShadow: selected ? '0 0 0 3px rgba(34,121,157,0.16), 0 8px 18px rgba(31,45,61,0.13)' : '0 6px 14px rgba(31,45,61,0.10)',
+  boxShadow: selected ? '0 0 0 3px rgba(34,121,157,0.16), 0 6px 12px rgba(31,45,61,0.12)' : '0 3px 8px rgba(31,45,61,0.10)',
   userSelect: 'none',
   zIndex: selected ? 6 : 4,
 });
@@ -98,14 +88,14 @@ const busLaneStyle: React.CSSProperties = {
   left: -1,
   right: -1,
   top: -1,
-  height: 8,
-  borderRadius: '7px 7px 0 0',
+  height: 7,
+  borderRadius: '5px 5px 0 0',
   background: 'repeating-linear-gradient(90deg, #687b8f 0 16px, #8b9a9f 16px 24px)',
 };
 
 const busIconStyle: React.CSSProperties = {
-  width: 30,
-  height: 18,
+  width: 28,
+  height: 17,
   display: 'inline-flex',
   alignItems: 'center',
   gap: 3,
@@ -125,7 +115,7 @@ const busWindowStyle: React.CSSProperties = {
 
 const nameStyle: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 15,
+  fontSize: 12.5,
   fontWeight: 700,
 };
 
@@ -138,18 +128,18 @@ const countRowStyle: React.CSSProperties = {
 
 const countStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 18,
+  fontSize: 15,
 };
 
 const metaStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 8.5,
   color: 'var(--text-muted)',
 };
 
 const statusStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: 10,
+  fontSize: 8.5,
   letterSpacing: 0.5,
   textTransform: 'uppercase',
 };

@@ -65,6 +65,7 @@ export const IncidentCard: React.FC<Props> = ({
   const latestAssessment = sceneAssessments[sceneAssessments.length - 1];
   const latestUpdate = incident.updates[incident.updates.length - 1];
   const unmetRequirement = assigned.length < incident.requiredOfficers;
+  const missingTaserOfficer = incident.requiresTaserPermission && taserCount === 0;
   const isNewIncident = incident.status !== 'closed' && Date.now() - new Date(incident.createdAt).getTime() < 5 * 60 * 1000;
   const dropOfficer = (event: React.DragEvent) => {
     event.preventDefault();
@@ -107,6 +108,10 @@ export const IncidentCard: React.FC<Props> = ({
           </div>
         </div>
 
+        {incident.requiresTaserPermission && (
+          <div style={requirementNoteStyle}>Nõue: vähemalt 1 EŠR õigusega ametnik</div>
+        )}
+
         <div style={assessmentStyle(Boolean(latestAssessment))}>
           <span style={miniLabelStyle}>Kohapealne hinnang</span>
           {latestAssessment ? (
@@ -141,6 +146,10 @@ export const IncidentCard: React.FC<Props> = ({
             <div style={requirementWarningStyle}>Vajalik nõue täitmata: {assigned.length}/{incident.requiredOfficers} ametnikku</div>
           )}
         </div>
+
+        {missingTaserOfficer && (
+          <div style={requirementWarningStyle}>Sündmus nõuab vähemalt ühte elektrišokirelva õigusega ametnikku.</div>
+        )}
 
         {latestUpdate && latestUpdate.id !== latestAssessment?.id && (
           <div style={latestUpdateStyle}>
@@ -273,6 +282,13 @@ const requirementPanelStyle: React.CSSProperties = {
 const resourceStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: 10.5,
+};
+
+const requirementNoteStyle: React.CSSProperties = {
+  marginTop: 5,
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
 };
 
 const assessmentStyle = (hasAssessment: boolean): React.CSSProperties => ({

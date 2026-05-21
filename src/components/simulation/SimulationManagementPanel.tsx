@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SimulationSnapshot, SimulationStatus } from '../../models';
+import { ClassroomExercise, ClassroomGroup, SimulationSnapshot, SimulationStatus } from '../../models';
 import {
   archiveSimulationSnapshot,
   deleteSimulationSnapshot,
@@ -9,6 +9,34 @@ import {
 interface Props {
   currentSimulationId: string;
   onOpenSimulation: (simulationId: string) => Promise<boolean> | boolean;
+}
+
+type ManagedSimulationEntry =
+  | {
+      kind: 'single';
+      id: string;
+      snapshot: SimulationSnapshot;
+      status: SimulationStatus;
+      updatedAt: string;
+      createdAt: string;
+    }
+  | {
+      kind: 'classroom';
+      id: string;
+      title: string;
+      exercise: ClassroomExercise | null;
+      snapshots: SimulationSnapshot[];
+      groups: ManagedGroup[];
+      status: SimulationStatus;
+      updatedAt: string;
+      createdAt: string;
+      teacherCode: string;
+      groupCount: number;
+      oldSnapshot: boolean;
+    };
+
+interface ManagedGroup extends ClassroomGroup {
+  snapshot?: SimulationSnapshot;
 }
 
 const statusLabels: Record<SimulationStatus, string> = {
@@ -32,6 +60,121 @@ function isGroupSimulation(snapshot: SimulationSnapshot) {
   return Boolean(snapshot.simulation.classroomExerciseId || snapshot.simulation.classroomGroupName);
 }
 
+function classroomEntryKey(snapshot: SimulationSnapshot) {
+  if (snapshot.simulation.classroomExerciseId) return snapshot.simulation.classroomExerciseId;
+  if (snapshot.classroomExercise?.id) return snapshot.classroomExercise.id;
+  if (snapshot.simulation.classroomGroupName && snapshot.classroomExercise?.teacherCode) {
+    return `legacy-${snapshot.classroomExercise.teacherCode}`;
+  }
+  return null;
+}
+
+function stripGroupSuffix(name: string, groupName?: string) {
+  if (!groupName) return name || 'Grupisimulatsioon';
+  const suffix = ` - ${groupName}`;
+  return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name || 'Grupisimulatsioon';
+}
+
+function latestDate(values: string[]) {
+  return values.reduce((latest, value) => (!latest || value > latest ? value : latest), '');
+}
+
+function earliestDate(values: string[]) {
+  return values.reduce((earliest, value) => (!earliest || value < earliest ? value : earliest), '');
+}
+
+function classroomStatus(snapshots: SimulationSnapshot[]): SimulationStatus {
+  const statuses = snapshots.map((snapshot) => snapshot.simulation.status);
+  if (statuses.length > 0 && statuses.every((status) => status === 'archived')) return 'archived';
+  if (statuses.includes('active')) return 'active';
+  if (statuses.includes('setup')) return 'setup';
+  if (statuses.includes('completed')) return 'completed';
+  return snapshots[0]?.simulation.status ?? 'setup';
+}
+
+function buildManagedEntries(snapshots: SimulationSnapshot[]): ManagedSimulationEntry[] {
+  const singles: ManagedSimulationEntry[] = [];
+  const classroomGroups = new Map<string, SimulationSnapshot[]>();
+
+  snapshots.forEach((snapshot) => {
+    const key = classroomEntryKey(snapshot);
+    if (!key) {
+      singles.push({
+        kind: 'single',
+        id: snapshot.simulation.id,
+        snapshot,
+        status: snapshot.simulation.status,
+        updatedAt: snapshot.simulation.updatedAt,
+        createdAt: snapshot.simulation.createdAt,
+      });
+      return;
+    }
+
+    classroomGroups.set(key, [...(classroomGroups.get(key) ?? []), snapshot]);
+  });
+
+  const classrooms = Array.from(classroomGroups.entries()).map(([id, groupSnapshots]) => {
+    const sortedSnapshots = [...groupSnapshots].sort((left, right) => {
+      const leftIndex = left.simulation.classroomGroupIndex ?? Number.MAX_SAFE_INTEGER;
+      const rightIndex = right.simulation.classroomGroupIndex ?? Number.MAX_SAFE_INTEGER;
+      return leftIndex - rightIndex || left.simulation.name.localeCompare(right.simulation.name, 'et');
+    });
+    const exercise = sortedSnapshots.find((snapshot) => snapshot.classroomExercise)?.classroomExercise ?? null;
+    const firstSnapshot = sortedSnapshots[0];
+    const title = exercise?.title ?? stripGroupSuffix(firstSnapshot.simulation.name, firstSnapshot.simulation.classroomGroupName);
+    const snapshotsById = new Map(sortedSnapshots.map((snapshot) => [snapshot.simulation.id, snapshot]));
+    const exerciseGroups =
+      exercise?.groups.map((group) => ({
+        ...group,
+        snapshot: snapshotsById.get(group.simulationId),
+      })) ?? [];
+    const knownGroupIds = new Set(exerciseGroups.map((group) => group.simulationId));
+    const extraGroups = sortedSnapshots
+      .filter((snapshot) => !knownGroupIds.has(snapshot.simulation.id))
+      .map((snapshot, index) => ({
+        simulationId: snapshot.simulation.id,
+        groupName: snapshot.simulation.classroomGroupName ?? `Grupp ${index + 1}`,
+        groupIndex: snapshot.simulation.classroomGroupIndex ?? index + 1,
+        studentCode: snapshot.simulation.studentCode ?? snapshot.simulation.joinCode,
+        teacherCode: snapshot.simulation.teacherCode ?? snapshot.simulation.joinCode,
+        snapshot,
+      }));
+    const groups = [...exerciseGroups, ...extraGroups].sort((left, right) => left.groupIndex - right.groupIndex);
+
+    return {
+      kind: 'classroom' as const,
+      id,
+      title,
+      exercise,
+      snapshots: sortedSnapshots,
+      groups,
+      status: classroomStatus(sortedSnapshots),
+      updatedAt: latestDate(sortedSnapshots.map((snapshot) => snapshot.simulation.updatedAt)),
+      createdAt: exercise?.createdAt ?? earliestDate(sortedSnapshots.map((snapshot) => snapshot.simulation.createdAt)),
+      teacherCode: exercise?.teacherCode ?? firstSnapshot.classroomExercise?.teacherCode ?? firstSnapshot.simulation.teacherCode ?? firstSnapshot.simulation.joinCode,
+      groupCount: exercise?.groupCount ?? groups.length,
+      oldSnapshot: sortedSnapshots.some((snapshot) => !snapshot.simulation.dataVersion),
+    };
+  });
+
+  return [...singles, ...classrooms].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function entryIsCurrent(entry: ManagedSimulationEntry, currentSimulationId: string) {
+  return entry.kind === 'single'
+    ? entry.snapshot.simulation.id === currentSimulationId
+    : entry.snapshots.some((snapshot) => snapshot.simulation.id === currentSimulationId);
+}
+
+function firstOpenableSnapshot(entry: ManagedSimulationEntry, currentSimulationId: string) {
+  if (entry.kind === 'single') return entry.snapshot;
+  return (
+    entry.snapshots.find((snapshot) => snapshot.simulation.id === currentSimulationId) ??
+    entry.snapshots.find((snapshot) => snapshot.simulation.status !== 'archived') ??
+    entry.snapshots[0]
+  );
+}
+
 export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId, onOpenSimulation }) => {
   const [collapsed, setCollapsed] = useState(true);
   const [snapshots, setSnapshots] = useState<SimulationSnapshot[]>([]);
@@ -39,6 +182,7 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [expandedClassrooms, setExpandedClassrooms] = useState<Set<string>>(new Set());
 
   const loadList = async () => {
     setLoading(true);
@@ -60,21 +204,28 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
     }
   }, [collapsed]);
 
-  const activeSnapshots = useMemo(
-    () => snapshots.filter((snapshot) => snapshot.simulation.status !== 'archived'),
-    [snapshots]
+  const managedEntries = useMemo(() => buildManagedEntries(snapshots), [snapshots]);
+  const activeEntries = useMemo(
+    () => managedEntries.filter((entry) => entry.status !== 'archived'),
+    [managedEntries]
   );
-  const archivedSnapshots = useMemo(
-    () => snapshots.filter((snapshot) => snapshot.simulation.status === 'archived'),
-    [snapshots]
+  const archivedEntries = useMemo(
+    () => managedEntries.filter((entry) => entry.status === 'archived'),
+    [managedEntries]
   );
 
-  const archiveSnapshot = async (snapshot: SimulationSnapshot) => {
-    if (!window.confirm(`Arhiveeri simulatsioon "${snapshot.simulation.name}"?`)) return;
-    setBusyId(snapshot.simulation.id);
+  const archiveEntry = async (entry: ManagedSimulationEntry) => {
+    const title = entry.kind === 'classroom' ? entry.title : entry.snapshot.simulation.name;
+    const confirmText =
+      entry.kind === 'classroom'
+        ? `Arhiveeri grupisimulatsioon "${title}" ja kõik selle grupid?`
+        : `Arhiveeri simulatsioon "${title}"?`;
+    if (!window.confirm(confirmText)) return;
+    setBusyId(entry.id);
     setMessage(null);
     try {
-      await archiveSimulationSnapshot(snapshot.simulation.id);
+      const targets = entry.kind === 'classroom' ? entry.snapshots : [entry.snapshot];
+      await Promise.all(targets.map((snapshot) => archiveSimulationSnapshot(snapshot.simulation.id)));
       await loadList();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Arhiveerimine ebaõnnestus.');
@@ -83,18 +234,32 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
     }
   };
 
-  const deleteSnapshot = async (snapshot: SimulationSnapshot) => {
-    if (!window.confirm('Kas oled kindel? Seda test-simulatsiooni ei saa pärast kustutamist taastada.')) return;
-    setBusyId(snapshot.simulation.id);
+  const deleteEntry = async (entry: ManagedSimulationEntry) => {
+    const confirmText =
+      entry.kind === 'classroom'
+        ? 'Kas oled kindel? Seda grupiharjutust ja kõigi gruppide test-simulatsioone ei saa pärast kustutamist taastada.'
+        : 'Kas oled kindel? Seda test-simulatsiooni ei saa pärast kustutamist taastada.';
+    if (!window.confirm(confirmText)) return;
+    setBusyId(entry.id);
     setMessage(null);
     try {
-      await deleteSimulationSnapshot(snapshot.simulation.id);
+      const targets = entry.kind === 'classroom' ? entry.snapshots : [entry.snapshot];
+      await Promise.all(targets.map((snapshot) => deleteSimulationSnapshot(snapshot.simulation.id)));
       await loadList();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Test-simulatsiooni kustutamine ebaõnnestus.');
     } finally {
       setBusyId(null);
     }
+  };
+
+  const openEntry = async (entry: ManagedSimulationEntry) => {
+    const snapshot = firstOpenableSnapshot(entry, currentSimulationId);
+    if (!snapshot) {
+      setMessage('Simulatsiooni avamine ebaõnnestus.');
+      return;
+    }
+    await openSnapshot(snapshot);
   };
 
   const openSnapshot = async (snapshot: SimulationSnapshot) => {
@@ -108,6 +273,15 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
     } finally {
       setBusyId(null);
     }
+  };
+
+  const toggleClassroom = (entryId: string) => {
+    setExpandedClassrooms((current) => {
+      const next = new Set(current);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
   };
 
   return (
@@ -140,24 +314,30 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
           {message && <div style={messageStyle}>{message}</div>}
 
           <SimulationList
-            title="Aktiivsed simulatsioonid"
-            snapshots={activeSnapshots}
+            title="Loodud simulatsioonid"
+            entries={activeEntries}
             currentSimulationId={currentSimulationId}
             busyId={busyId}
-            onOpen={openSnapshot}
-            onArchive={archiveSnapshot}
-            onDelete={deleteSnapshot}
+            expandedClassrooms={expandedClassrooms}
+            onOpen={openEntry}
+            onOpenSnapshot={openSnapshot}
+            onArchive={archiveEntry}
+            onDelete={deleteEntry}
+            onToggleClassroom={toggleClassroom}
           />
 
           {showArchived && (
             <SimulationList
               title="Arhiveeritud simulatsioonid"
-              snapshots={archivedSnapshots}
+              entries={archivedEntries}
               currentSimulationId={currentSimulationId}
               busyId={busyId}
-              onOpen={openSnapshot}
-              onArchive={archiveSnapshot}
-              onDelete={deleteSnapshot}
+              expandedClassrooms={expandedClassrooms}
+              onOpen={openEntry}
+              onOpenSnapshot={openSnapshot}
+              onArchive={archiveEntry}
+              onDelete={deleteEntry}
+              onToggleClassroom={toggleClassroom}
             />
           )}
         </div>
@@ -168,44 +348,63 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
 
 const SimulationList: React.FC<{
   title: string;
-  snapshots: SimulationSnapshot[];
+  entries: ManagedSimulationEntry[];
   currentSimulationId: string;
   busyId: string | null;
-  onOpen: (snapshot: SimulationSnapshot) => void;
-  onArchive: (snapshot: SimulationSnapshot) => void;
-  onDelete: (snapshot: SimulationSnapshot) => void;
-}> = ({ title, snapshots, currentSimulationId, busyId, onOpen, onArchive, onDelete }) => (
+  expandedClassrooms: Set<string>;
+  onOpen: (entry: ManagedSimulationEntry) => void;
+  onOpenSnapshot: (snapshot: SimulationSnapshot) => void;
+  onArchive: (entry: ManagedSimulationEntry) => void;
+  onDelete: (entry: ManagedSimulationEntry) => void;
+  onToggleClassroom: (entryId: string) => void;
+}> = ({ title, entries, currentSimulationId, busyId, expandedClassrooms, onOpen, onOpenSnapshot, onArchive, onDelete, onToggleClassroom }) => (
   <div style={listSectionStyle}>
     <div style={sectionTitleStyle}>{title}</div>
-    {snapshots.length === 0 ? (
+    {entries.length === 0 ? (
       <div style={emptyStyle}>Simulatsioone ei leitud.</div>
     ) : (
       <div style={listStyle}>
-        {snapshots.map((snapshot) => (
-          <SimulationRow
-            key={snapshot.simulation.id}
-            snapshot={snapshot}
-            current={snapshot.simulation.id === currentSimulationId}
-            busy={busyId === snapshot.simulation.id}
-            onOpen={() => onOpen(snapshot)}
-            onArchive={() => onArchive(snapshot)}
-            onDelete={() => onDelete(snapshot)}
-          />
-        ))}
+        {entries.map((entry) =>
+          entry.kind === 'classroom' ? (
+            <ClassroomSimulationRow
+              key={entry.id}
+              entry={entry}
+              current={entryIsCurrent(entry, currentSimulationId)}
+              busy={busyId === entry.id}
+              busyId={busyId}
+              expanded={expandedClassrooms.has(entry.id)}
+              onOpen={() => onOpen(entry)}
+              onOpenSnapshot={onOpenSnapshot}
+              onArchive={() => onArchive(entry)}
+              onDelete={() => onDelete(entry)}
+              onToggle={() => onToggleClassroom(entry.id)}
+            />
+          ) : (
+            <SingleSimulationRow
+              key={entry.id}
+              entry={entry}
+              current={entryIsCurrent(entry, currentSimulationId)}
+              busy={busyId === entry.id}
+              onOpen={() => onOpen(entry)}
+              onArchive={() => onArchive(entry)}
+              onDelete={() => onDelete(entry)}
+            />
+          )
+        )}
       </div>
     )}
   </div>
 );
 
-const SimulationRow: React.FC<{
-  snapshot: SimulationSnapshot;
+const SingleSimulationRow: React.FC<{
+  entry: Extract<ManagedSimulationEntry, { kind: 'single' }>;
   current: boolean;
   busy: boolean;
   onOpen: () => void;
   onArchive: () => void;
   onDelete: () => void;
-}> = ({ snapshot, current, busy, onOpen, onArchive, onDelete }) => {
-  const { simulation } = snapshot;
+}> = ({ entry, current, busy, onOpen, onArchive, onDelete }) => {
+  const { simulation } = entry.snapshot;
   const oldSnapshot = !simulation.dataVersion;
   const teacherCode = simulation.teacherCode ?? simulation.joinCode;
   const studentCode = simulation.studentCode ?? simulation.joinCode;
@@ -213,8 +412,7 @@ const SimulationRow: React.FC<{
     simulation.joinCode !== simulation.teacherCode && simulation.joinCode !== simulation.studentCode
       ? simulation.joinCode
       : undefined;
-  const groupName = simulation.classroomGroupName ?? snapshot.classroomExercise?.title;
-  const groupSimulation = isGroupSimulation(snapshot);
+  const groupSimulation = isGroupSimulation(entry.snapshot);
 
   return (
     <article style={rowStyle(current)}>
@@ -233,7 +431,7 @@ const SimulationRow: React.FC<{
           <Info label="Õppejõu kood" value={teacherCode} />
           <Info label="Õpilase kood" value={studentCode} />
           <Info label="Vana kood" value={legacyCode ?? '-'} />
-          <Info label="Grupp" value={groupName ?? '-'} />
+          <Info label="Grupp" value={simulation.classroomGroupName ?? '-'} />
         </div>
 
         {oldSnapshot && (
@@ -242,7 +440,7 @@ const SimulationRow: React.FC<{
             <span>See simulatsioon loodi vanema versiooniga. Uute funktsioonide testimiseks loo uus puhas simulatsioon.</span>
           </div>
         )}
-        {groupSimulation && <div style={groupDeleteNoteStyle}>Kustutamine eemaldab ainult selle grupi salvestatud seisu.</div>}
+        {groupSimulation && <div style={groupDeleteNoteStyle}>Vana grupikirje: sellel puudub piisav grupiharjutuse metadata ühiseks koondamiseks.</div>}
       </div>
 
       <div style={actionColumnStyle}>
@@ -255,6 +453,84 @@ const SimulationRow: React.FC<{
     </article>
   );
 };
+
+const ClassroomSimulationRow: React.FC<{
+  entry: Extract<ManagedSimulationEntry, { kind: 'classroom' }>;
+  current: boolean;
+  busy: boolean;
+  busyId: string | null;
+  expanded: boolean;
+  onOpen: () => void;
+  onOpenSnapshot: (snapshot: SimulationSnapshot) => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  onToggle: () => void;
+}> = ({ entry, current, busy, busyId, expanded, onOpen, onOpenSnapshot, onArchive, onDelete, onToggle }) => (
+  <article style={rowStyle(current)}>
+    <div style={rowMainStyle}>
+      <div style={simulationTitleStyle}>
+        <span>{entry.title}</span>
+        {current && <span style={currentBadgeStyle}>Praegu avatud</span>}
+        <span style={typeBadgeStyle}>Grupisimulatsioon</span>
+      </div>
+
+      <div style={metaGridStyle}>
+        <Info label="Simulatsioon" value={entry.id} compact />
+        <Info label="Loodud" value={formatDate(entry.createdAt)} />
+        <Info label="Muudetud" value={formatDate(entry.updatedAt)} />
+        <Info label="Staatus" value={statusLabels[entry.status] ?? entry.status} />
+        <Info label="Õppejõu kood" value={entry.teacherCode} />
+        <Info label="Gruppide arv" value={`${entry.groupCount}`} />
+      </div>
+
+      {entry.oldSnapshot && (
+        <div style={oldSnapshotStyle}>
+          <strong>Vana simulatsiooni põhi</strong>
+          <span>See grupiharjutus sisaldab vanema versiooniga loodud grupi seise. Uute funktsioonide testimiseks loo uus puhas simulatsioon.</span>
+        </div>
+      )}
+
+      <div style={classroomSummaryStyle}>
+        <div>
+          <strong>Grupid</strong>
+          <span>{entry.groups.length} töölauda</span>
+        </div>
+        <button onClick={onToggle} style={miniButtonStyle}>
+          {expanded ? 'Peida grupid' : 'Ava grupid'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={groupListStyle}>
+          {entry.groups.map((group) => (
+            <div key={group.simulationId} style={groupRowStyle}>
+              <div style={groupInfoStyle}>
+                <strong>{group.groupName}</strong>
+                <span>Õpilase kood: {group.studentCode}</span>
+                <span>Staatus: {group.snapshot ? statusLabels[group.snapshot.simulation.status] ?? group.snapshot.simulation.status : 'seis puudub'}</span>
+              </div>
+              <button
+                onClick={() => group.snapshot && onOpenSnapshot(group.snapshot)}
+                disabled={!group.snapshot || busyId === group.simulationId}
+                style={secondaryButtonStyle}
+              >
+                {group.snapshot?.simulation.status === 'completed' ? 'Vaata grupi lahendust' : 'Ava grupi töölaud'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div style={actionColumnStyle}>
+      <button onClick={onOpen} disabled={busy} style={primaryButtonStyle}>Halda grupisimulatsiooni</button>
+      {entry.status !== 'archived' && (
+        <button onClick={onArchive} disabled={busy} style={secondaryButtonStyle}>Arhiveeri</button>
+      )}
+      <button onClick={onDelete} disabled={busy} style={dangerButtonStyle}>Kustuta kogu grupiharjutus</button>
+    </div>
+  </article>
+);
 
 const Info: React.FC<{ label: string; value: string; compact?: boolean }> = ({ label, value, compact }) => (
   <div style={infoStyle}>
@@ -456,8 +732,58 @@ const groupDeleteNoteStyle: React.CSSProperties = {
   fontSize: 11,
 };
 
+const classroomSummaryStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 8,
+  padding: '7px 8px',
+  background: '#f8fafc',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+};
+
+const miniButtonStyle: React.CSSProperties = {
+  minHeight: 24,
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 9,
+  textTransform: 'uppercase',
+  padding: '4px 7px',
+};
+
+const groupListStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 6,
+};
+
+const groupRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gap: 8,
+  alignItems: 'center',
+  padding: '7px 8px',
+  background: '#ffffff',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+};
+
+const groupInfoStyle: React.CSSProperties = {
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  color: 'var(--text-secondary)',
+  fontSize: 11,
+};
+
 const actionColumnStyle: React.CSSProperties = {
-  width: 150,
+  width: 160,
   display: 'flex',
   flexDirection: 'column',
   gap: 6,

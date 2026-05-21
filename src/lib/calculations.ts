@@ -74,12 +74,12 @@ export function calculateWarnings(
     }
 
     if (incident.requiresTaserPermission) {
-      const taserCount = assigned.filter((officer) => officer.hasTaserPermission).length;
-      if (taserCount < Math.min(incident.requiredOfficers, assigned.length || 1)) {
+      const hasTaserOfficer = assigned.some((officer) => officer.hasTaserPermission);
+      if (!hasTaserOfficer) {
         warnings.push({
           id: `incident-taser-${incident.id}`,
           type: 'missing_taser_permission',
-          message: `Sündmusel "${incident.title}" puudub vajalik elektrišokirelva õigus (${taserCount}/${incident.requiredOfficers}).`,
+          message: 'Sündmus nõuab vähemalt ühte elektrišokirelva õigusega ametnikku.',
           relatedIncidentId: incident.id,
         });
       }

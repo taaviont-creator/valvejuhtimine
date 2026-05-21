@@ -5,6 +5,7 @@ interface Props {
   officer: Officer;
   selected?: boolean;
   compact?: boolean;
+  mapPreview?: boolean;
   draggable?: boolean;
   onClick?: () => void;
   title?: string;
@@ -61,6 +62,7 @@ export const OfficerMarker: React.FC<Props> = ({
   officer,
   selected = false,
   compact = false,
+  mapPreview = false,
   draggable = true,
   onClick,
   title,
@@ -68,6 +70,7 @@ export const OfficerMarker: React.FC<Props> = ({
   const isLead = officer.role === 'vanemvalvur';
   const color = statusColors[officer.status];
   const disabled = officer.status === 'unavailable';
+  const tooltip = officerTooltip(officer, title);
 
   return (
     <button
@@ -81,50 +84,75 @@ export const OfficerMarker: React.FC<Props> = ({
         event.stopPropagation();
         onClick?.();
       }}
-      title={title ?? `${officer.name} | ${isLead ? 'Vanemvalvur' : 'Valvur'} | ${officerGenderLabels[officer.gender]} | ${officerStatusLabels[officer.status]}`}
-      style={markerStyle(color, statusBackgrounds[officer.status], selected, isLead, compact, disabled)}
+      title={tooltip}
+      aria-label={tooltip.replace(/\n/g, ', ')}
+      style={markerStyle(color, statusBackgrounds[officer.status], genderColors[officer.gender], genderBackgrounds[officer.gender], selected, isLead, compact, mapPreview, disabled)}
     >
-      <span style={personStyle(genderColors[officer.gender], compact)}>
-        <span style={headStyle(compact)} />
-        <span style={bodyStyle(compact)} />
-      </span>
+      {!mapPreview && (
+        <span style={personStyle(genderColors[officer.gender], compact)}>
+          <span style={headStyle(compact)} />
+          <span style={bodyStyle(compact)} />
+        </span>
+      )}
       <span style={textStackStyle}>
-        <span style={nameStyle(compact)}>{officer.name}</span>
+        <span style={nameStyle(compact, mapPreview)}>{officer.name}</span>
         {!compact && <span style={statusStyle(color)}>{officerStatusLabels[officer.status]}</span>}
       </span>
-      <span style={roleStyle(isLead)}>{isLead ? 'VV' : 'V'}</span>
-      <span style={genderStyle(genderColors[officer.gender], genderBackgrounds[officer.gender])}>
+      <span style={roleStyle(isLead, mapPreview)}>{isLead ? 'VV' : 'V'}</span>
+      <span style={genderStyle(genderColors[officer.gender], genderBackgrounds[officer.gender], mapPreview)}>
         {genderShortLabels[officer.gender]}
       </span>
-      <span style={permissionStackStyle}>
-        {officer.hasEscortPermission && <span style={permissionStyle('var(--green)')}>S</span>}
-        {officer.hasTaserPermission && <span style={permissionStyle('var(--amber)')}>EŠR</span>}
-      </span>
+      {compact && <span style={statusDotStyle(color, mapPreview)} aria-hidden="true" />}
+      {!compact && (
+        <span style={permissionStackStyle}>
+          {officer.hasEscortPermission && <span style={permissionStyle('var(--green)')}>S</span>}
+          {officer.hasTaserPermission && <span style={permissionStyle('var(--amber)')}>EŠR</span>}
+        </span>
+      )}
     </button>
   );
+};
+
+const officerTooltip = (officer: Officer, context?: string): string => {
+  const contextText = context?.startsWith(`${officer.name} | `)
+    ? context.slice(officer.name.length + 3)
+    : context;
+
+  return [
+    `Ametnik: ${officer.name}`,
+    `Roll: ${officer.role === 'vanemvalvur' ? 'Vanemvalvur' : 'Valvur'}`,
+    `Sugu: ${officerGenderLabels[officer.gender]}`,
+    `Saateõigus: ${officer.hasEscortPermission ? 'Jah' : 'Ei'}`,
+    `Elektrišokirelva õigus: ${officer.hasTaserPermission ? 'Jah' : 'Ei'}`,
+    `Staatus: ${officerStatusLabels[officer.status]}`,
+    contextText ? `Asukoht / ülesanne: ${contextText}` : null,
+  ].filter(Boolean).join('\n');
 };
 
 const markerStyle = (
   color: string,
   background: string,
+  genderColor: string,
+  genderBackground: string,
   selected: boolean,
   isLead: boolean,
   compact: boolean,
+  mapPreview: boolean,
   disabled: boolean
 ): React.CSSProperties => ({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: compact ? 3 : 5,
-  minHeight: compact ? 25 : 32,
-  maxWidth: compact ? 132 : 185,
-  padding: compact ? '2px 5px' : '4px 7px',
+  gap: mapPreview ? 2 : compact ? 3 : 5,
+  minHeight: mapPreview ? 20 : compact ? 25 : 32,
+  maxWidth: mapPreview ? 58 : compact ? '100%' : 185,
+  padding: mapPreview ? '1px 4px' : compact ? '2px 5px' : '4px 7px',
   border: `${selected ? 2 : isLead ? 2 : 1}px solid ${selected ? 'var(--cyan)' : isLead ? 'var(--text-primary)' : color}`,
   borderRadius: 999,
-  background,
+  background: compact ? `linear-gradient(90deg, ${genderBackground} 0 ${mapPreview ? 18 : 30}px, ${background} ${mapPreview ? 18 : 30}px)` : background,
   color: disabled ? 'var(--text-muted)' : 'var(--text-primary)',
   opacity: disabled ? 0.55 : 1,
   cursor: disabled ? 'not-allowed' : 'grab',
-  boxShadow: selected ? 'var(--shadow-glow)' : 'none',
+  boxShadow: [selected ? 'var(--shadow-glow)' : null, compact ? `inset ${mapPreview ? 2 : 3}px 0 0 ${genderColor}` : null].filter(Boolean).join(', ') || 'none',
   fontFamily: 'var(--font-mono)',
   userSelect: 'none',
   overflow: 'hidden',
@@ -164,12 +192,15 @@ const textStackStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   lineHeight: 1.05,
+  overflow: 'hidden',
 };
 
-const nameStyle = (compact: boolean): React.CSSProperties => ({
-  fontSize: compact ? 10 : 12,
+const nameStyle = (compact: boolean, mapPreview: boolean): React.CSSProperties => ({
+  fontSize: mapPreview ? 9 : compact ? 10 : 12,
   fontWeight: 800,
   whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 });
 
 const statusStyle = (color: string): React.CSSProperties => ({
@@ -179,9 +210,9 @@ const statusStyle = (color: string): React.CSSProperties => ({
   whiteSpace: 'nowrap',
 });
 
-const roleStyle = (isLead: boolean): React.CSSProperties => ({
-  minWidth: isLead ? 20 : 16,
-  height: 15,
+const roleStyle = (isLead: boolean, mapPreview: boolean): React.CSSProperties => ({
+  minWidth: mapPreview ? (isLead ? 17 : 13) : isLead ? 20 : 16,
+  height: mapPreview ? 13 : 15,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -189,14 +220,14 @@ const roleStyle = (isLead: boolean): React.CSSProperties => ({
   background: isLead ? 'var(--text-primary)' : 'transparent',
   border: `1px solid ${isLead ? 'var(--text-primary)' : 'var(--text-muted)'}`,
   color: isLead ? '#fff' : 'var(--text-secondary)',
-  fontSize: 8,
+  fontSize: mapPreview ? 7 : 8,
   fontWeight: 800,
   flexShrink: 0,
 });
 
-const genderStyle = (color: string, background: string): React.CSSProperties => ({
-  minWidth: 16,
-  height: 15,
+const genderStyle = (color: string, background: string, mapPreview: boolean): React.CSSProperties => ({
+  minWidth: mapPreview ? 13 : 16,
+  height: mapPreview ? 13 : 15,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -204,8 +235,17 @@ const genderStyle = (color: string, background: string): React.CSSProperties => 
   background,
   border: `1px solid ${color}`,
   color,
-  fontSize: 8,
+  fontSize: mapPreview ? 7 : 8,
   fontWeight: 900,
+  flexShrink: 0,
+});
+
+const statusDotStyle = (color: string, mapPreview: boolean): React.CSSProperties => ({
+  width: mapPreview ? 5 : 7,
+  height: mapPreview ? 5 : 7,
+  borderRadius: '50%',
+  background: color,
+  boxShadow: '0 0 0 2px rgba(255,255,255,0.78)',
   flexShrink: 0,
 });
 

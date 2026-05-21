@@ -249,6 +249,7 @@ const StudentGuidancePanel: React.FC<{
             <li>Kontrolli õiguseid: saateõigus ja elektrišokirelva õigus.</li>
             <li>Suuna ametnik sündmusele, üksusesse või saatebussile.</li>
             <li>Jälgi hoiatusi ja üksuste miinimumkoosseisu.</li>
+            <li>Lohista ametnik hoone sees olevale sündmuse kastile või vali ametniku infopaneelist sündmus.</li>
           </ol>
           <div style={guidanceHintStyle}>{nextHint}</div>
         </div>

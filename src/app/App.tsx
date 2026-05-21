@@ -12,6 +12,7 @@ import { ClassroomGroupOverview } from '../components/classroom/ClassroomGroupOv
 import { SharingToolsPanel } from '../components/sharing/SharingToolsPanel';
 import { TestingResetPanel } from '../components/testing/TestingResetPanel';
 import { SimulationManagementPanel } from '../components/simulation/SimulationManagementPanel';
+import { DebriefSummaryPanel } from '../components/debrief/DebriefSummaryPanel';
 import { useSimulation } from '../hooks/useSimulation';
 import { IncidentSeverity, Simulation } from '../models';
 import { PreparedScenarioInject } from '../data/incidentTemplates';
@@ -316,6 +317,20 @@ export const App: React.FC = () => {
         />
       )}
 
+      {isFacilitator && (
+        <DebriefSummaryPanel
+          simulation={state.simulation}
+          classroomExercise={state.classroomExercise}
+          classroomSnapshots={state.classroomSnapshots}
+          buildings={state.buildings}
+          officers={state.officers}
+          incidents={state.incidents}
+          buses={state.buses}
+          warnings={state.warnings}
+          decisionLog={state.decisionLog}
+        />
+      )}
+
       <div style={dashboardStyle}>
         <LeftSidebar
           role={state.role}
@@ -352,6 +367,7 @@ export const App: React.FC = () => {
             isFacilitator={isFacilitator}
             onCreateIncident={(buildingId) => setIncidentFormBuildingId(buildingId)}
             onOfficerDropToBuilding={moveDroppedOfficerToBuilding}
+            onOfficerDropToIncident={assignDroppedOfficerToIncident}
             onOfficerDropToBus={assignDroppedOfficerToBus}
             onSelectOfficer={setSelectedOfficerId}
           />
