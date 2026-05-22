@@ -42,6 +42,7 @@ export const App: React.FC = () => {
         onCreate={sim.createSimulation}
         onCreateClassroom={sim.createClassroomExercise}
         onJoin={sim.joinSimulation}
+        onOpenSimulation={sim.openSimulationById}
         syncStatus={state.syncStatus}
         syncMessage={state.syncMessage}
       />

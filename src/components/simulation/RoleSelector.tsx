@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { AppRole, SetupMode } from '../../models';
+import { SimulationManagementPanel } from './SimulationManagementPanel';
 
 interface Props {
   onCreate: (name: string, setupMode: SetupMode, displayName: string) => void;
   onCreateClassroom: (name: string, setupMode: SetupMode, displayName: string, groupCount: number) => void;
   onJoin: (joinCode: string, requestedRole: AppRole | null, displayName: string) => Promise<boolean>;
+  onOpenSimulation: (simulationId: string) => Promise<boolean> | boolean;
   syncStatus: string;
   syncMessage?: string;
 }
 
-export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJoin, syncStatus, syncMessage }) => {
+export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJoin, onOpenSimulation, syncStatus, syncMessage }) => {
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const [simulationName, setSimulationName] = useState('Valvejuhtimise õppus');
   const [teacherName, setTeacherName] = useState('Õppejõud');
@@ -20,6 +22,7 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJ
   const [joinCode, setJoinCode] = useState(search.get('join') ?? '');
   const requestedRole: AppRole | null = search.get('role') === 'teacher' ? 'facilitator' : search.get('role') === 'student' ? 'commander' : null;
   const [joining, setJoining] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
 
   const join = async () => {
     if (!joinCode.trim()) return;
@@ -38,6 +41,60 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJ
             Õppejõud annab olukorrad ette. Korrapidaja juhib piiratud ametnike ressurssi. Mõlemad vaated on samas simulatsioonis.
           </p>
         </div>
+
+        <div style={homeActionGridStyle}>
+          <button
+            type="button"
+            onClick={() => {
+              setManagerOpen(false);
+              setCreateMode('single');
+            }}
+            style={homeActionStyle(createMode === 'single' && !managerOpen)}
+          >
+            <strong>Loo uus simulatsioon</strong>
+            <span>Üks õpetaja ja üks korrapidaja töölaud.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setManagerOpen(false);
+              setCreateMode('classroom');
+            }}
+            style={homeActionStyle(createMode === 'classroom' && !managerOpen)}
+          >
+            <strong>Loo mitme grupi harjutus</strong>
+            <span>Grupid alustavad ühise algseisuga.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setManagerOpen((value) => !value)}
+            style={homeActionStyle(managerOpen)}
+          >
+            <strong>Ava loodud simulatsioonid</strong>
+            <span>Leia olemasolevad simulatsioonid ja grupiharjutused.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => document.getElementById('join-code-input')?.focus()}
+            style={homeActionStyle(false)}
+          >
+            <strong>Liitu koodiga</strong>
+            <span>Õpilase või õpetaja kood avab õige vaate.</span>
+          </button>
+        </div>
+
+        {managerOpen && (
+          <div style={homeManagerStyle}>
+            <SimulationManagementPanel
+              onOpenSimulation={onOpenSimulation}
+              initialCollapsed={false}
+              onCreateNew={() => {
+                setManagerOpen(false);
+                setCreateMode('single');
+              }}
+            />
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
           <section style={panelStyle}>
@@ -117,6 +174,7 @@ export const RoleSelector: React.FC<Props> = ({ onCreate, onCreateClassroom, onJ
             <div style={panelTitleStyle}>Liitu koodiga</div>
             <Field label="Sisesta kood">
               <input
+                id="join-code-input"
                 value={joinCode}
                 onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
                 placeholder="OPIL-9135"
@@ -195,6 +253,36 @@ const subtitleStyle: React.CSSProperties = {
   maxWidth: 720,
   color: 'var(--text-secondary)',
   fontSize: 15,
+};
+
+const homeActionGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gap: 10,
+  marginBottom: 16,
+};
+
+const homeActionStyle = (active: boolean): React.CSSProperties => ({
+  minHeight: 86,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+  padding: 12,
+  border: `1px solid ${active ? 'var(--cyan)' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-md)',
+  background: active ? 'rgba(34,121,157,0.10)' : 'var(--bg-panel)',
+  color: 'var(--text-secondary)',
+  textAlign: 'left',
+  lineHeight: 1.25,
+  boxShadow: active ? 'var(--shadow-glow)' : 'var(--shadow-card)',
+});
+
+const homeManagerStyle: React.CSSProperties = {
+  marginBottom: 16,
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  overflow: 'hidden',
+  boxShadow: 'var(--shadow-card)',
 };
 
 const panelStyle: React.CSSProperties = {

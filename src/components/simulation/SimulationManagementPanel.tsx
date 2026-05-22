@@ -7,8 +7,10 @@ import {
 } from '../../lib/sharedSimulationStore';
 
 interface Props {
-  currentSimulationId: string;
+  currentSimulationId?: string;
   onOpenSimulation: (simulationId: string) => Promise<boolean> | boolean;
+  initialCollapsed?: boolean;
+  onCreateNew?: () => void;
 }
 
 type ManagedSimulationEntry =
@@ -160,23 +162,37 @@ function buildManagedEntries(snapshots: SimulationSnapshot[]): ManagedSimulation
   return [...singles, ...classrooms].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-function entryIsCurrent(entry: ManagedSimulationEntry, currentSimulationId: string) {
+function entryIsCurrent(entry: ManagedSimulationEntry, currentSimulationId?: string) {
+  if (!currentSimulationId) return false;
   return entry.kind === 'single'
     ? entry.snapshot.simulation.id === currentSimulationId
     : entry.snapshots.some((snapshot) => snapshot.simulation.id === currentSimulationId);
 }
 
-function firstOpenableSnapshot(entry: ManagedSimulationEntry, currentSimulationId: string) {
+function firstOpenableSnapshot(entry: ManagedSimulationEntry, currentSimulationId?: string) {
   if (entry.kind === 'single') return entry.snapshot;
   return (
-    entry.snapshots.find((snapshot) => snapshot.simulation.id === currentSimulationId) ??
+    (currentSimulationId ? entry.snapshots.find((snapshot) => snapshot.simulation.id === currentSimulationId) : undefined) ??
     entry.snapshots.find((snapshot) => snapshot.simulation.status !== 'archived') ??
     entry.snapshots[0]
   );
 }
 
-export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId, onOpenSimulation }) => {
-  const [collapsed, setCollapsed] = useState(true);
+async function copyCode(label: string, code: string) {
+  try {
+    await navigator.clipboard?.writeText(code);
+  } catch {
+    window.prompt(label, code);
+  }
+}
+
+export const SimulationManagementPanel: React.FC<Props> = ({
+  currentSimulationId,
+  onOpenSimulation,
+  initialCollapsed = true,
+  onCreateNew,
+}) => {
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [snapshots, setSnapshots] = useState<SimulationSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -324,6 +340,7 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
             onArchive={archiveEntry}
             onDelete={deleteEntry}
             onToggleClassroom={toggleClassroom}
+            onCreateNew={onCreateNew}
           />
 
           {showArchived && (
@@ -338,6 +355,7 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
               onArchive={archiveEntry}
               onDelete={deleteEntry}
               onToggleClassroom={toggleClassroom}
+              onCreateNew={onCreateNew}
             />
           )}
         </div>
@@ -349,7 +367,7 @@ export const SimulationManagementPanel: React.FC<Props> = ({ currentSimulationId
 const SimulationList: React.FC<{
   title: string;
   entries: ManagedSimulationEntry[];
-  currentSimulationId: string;
+  currentSimulationId?: string;
   busyId: string | null;
   expandedClassrooms: Set<string>;
   onOpen: (entry: ManagedSimulationEntry) => void;
@@ -357,11 +375,19 @@ const SimulationList: React.FC<{
   onArchive: (entry: ManagedSimulationEntry) => void;
   onDelete: (entry: ManagedSimulationEntry) => void;
   onToggleClassroom: (entryId: string) => void;
-}> = ({ title, entries, currentSimulationId, busyId, expandedClassrooms, onOpen, onOpenSnapshot, onArchive, onDelete, onToggleClassroom }) => (
+  onCreateNew?: () => void;
+}> = ({ title, entries, currentSimulationId, busyId, expandedClassrooms, onOpen, onOpenSnapshot, onArchive, onDelete, onToggleClassroom, onCreateNew }) => (
   <div style={listSectionStyle}>
     <div style={sectionTitleStyle}>{title}</div>
     {entries.length === 0 ? (
-      <div style={emptyStyle}>Simulatsioone ei leitud.</div>
+      <div style={emptyStyle}>
+        <span>Ühtegi loodud simulatsiooni ei leitud.</span>
+        {onCreateNew && (
+          <button type="button" onClick={onCreateNew} style={emptyActionStyle}>
+            Loo uus simulatsioon
+          </button>
+        )}
+      </div>
     ) : (
       <div style={listStyle}>
         {entries.map((entry) =>
@@ -445,6 +471,8 @@ const SingleSimulationRow: React.FC<{
 
       <div style={actionColumnStyle}>
         <button onClick={onOpen} disabled={busy} style={primaryButtonStyle}>Ava</button>
+        <button onClick={() => void copyCode('Õppejõu kood', teacherCode)} disabled={busy} style={secondaryButtonStyle}>Kopeeri õpetaja kood</button>
+        <button onClick={() => void copyCode('Õpilase kood', studentCode)} disabled={busy} style={secondaryButtonStyle}>Kopeeri õpilase kood</button>
         {simulation.status !== 'archived' && (
           <button onClick={onArchive} disabled={busy} style={secondaryButtonStyle}>Arhiveeri</button>
         )}
@@ -516,6 +544,12 @@ const ClassroomSimulationRow: React.FC<{
               >
                 {group.snapshot?.simulation.status === 'completed' ? 'Vaata grupi lahendust' : 'Ava grupi töölaud'}
               </button>
+              <button
+                onClick={() => void copyCode(`${group.groupName} õpilase kood`, group.studentCode)}
+                style={secondaryButtonStyle}
+              >
+                Kopeeri õpilase kood
+              </button>
             </div>
           ))}
         </div>
@@ -524,6 +558,7 @@ const ClassroomSimulationRow: React.FC<{
 
     <div style={actionColumnStyle}>
       <button onClick={onOpen} disabled={busy} style={primaryButtonStyle}>Halda grupisimulatsiooni</button>
+      <button onClick={() => void copyCode('Õppejõu kood', entry.teacherCode)} disabled={busy} style={secondaryButtonStyle}>Kopeeri õpetaja kood</button>
       {entry.status !== 'archived' && (
         <button onClick={onArchive} disabled={busy} style={secondaryButtonStyle}>Arhiveeri</button>
       )}
@@ -613,12 +648,28 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 const emptyStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
   padding: 10,
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)',
   color: 'var(--text-secondary)',
   fontSize: 12,
+};
+
+const emptyActionStyle: React.CSSProperties = {
+  minHeight: 28,
+  background: 'var(--cyan)',
+  border: '1px solid var(--cyan)',
+  borderRadius: 'var(--radius-sm)',
+  color: '#ffffff',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  textTransform: 'uppercase',
+  padding: '5px 8px',
 };
 
 const listStyle: React.CSSProperties = {
@@ -764,7 +815,7 @@ const groupListStyle: React.CSSProperties = {
 
 const groupRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gridTemplateColumns: 'minmax(0, 1fr) auto auto',
   gap: 8,
   alignItems: 'center',
   padding: '7px 8px',
